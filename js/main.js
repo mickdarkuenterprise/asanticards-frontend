@@ -73,22 +73,34 @@ function saveProducts(p) {
     }).catch(() => {}); // Silent fail — localStorage already updated
   });
 }
+
 async function fetchProductsFromAPI() {
   try {
-    const products = await apiFetch('/api/products');
-    if (Array.isArray(products) && products.length) {
-      _productsCache = products;
-      localStorage.setItem('asanti_products', JSON.stringify(products));
-      renderStoreProducts();
-      updatePriceSpans(products);
-      if (document.getElementById('adminProductList')) renderAdminProducts();
+    const data = await apiFetch('/api/products');
+    
+    // Unwraps the backend object whether it uses { products: [...] } or direct [...]
+    let products = [];
+    if (data && Array.isArray(data.products)) {
+      products = data.products;
+    } else if (Array.isArray(data)) {
+      products = data;
+    } else {
+      throw new Error("Unknown data format received from API");
     }
+
+    _productsCache = products;
+    localStorage.setItem('asanti_products', JSON.stringify(products));
+    
+    if (document.getElementById('productsGrid')) renderStoreProducts();
+    if (document.getElementById('adminProductList')) renderAdminProducts();
+    updatePriceSpans(products);
+
   } catch (err) {
     console.warn('Could not load products from API, using local cache:', err.message);
-    // Still update price spans from cache/defaults
     updatePriceSpans(loadProducts());
   }
 }
+
 
 // Orders: saved to API, read from API in admin; localStorage mirrors for speed
 function loadOrders() {
