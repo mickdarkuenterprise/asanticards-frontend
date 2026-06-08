@@ -482,7 +482,7 @@ function updateCartUI(){
   if (cartSubtotalEl) cartSubtotalEl.textContent = `GH₵ ${sub.toLocaleString()}`;
   
   const cartShippingEl = document.getElementById('cartShippingDisplay');
-  if (cartShippingEl) cartShippingEl.textContent = actualShipping === 0 ? 'GH₵ 50' : `GH₵ ${actualShipping}`;
+  if (cartShippingEl) cartShippingEl.textContent = actualShipping === 50 ? 'GH₵ 50' : `GH₵ ${actualShipping}`;
   
   const cartTotalEl = document.getElementById('cartTotal');
   if (cartTotalEl) cartTotalEl.textContent = `GH₵ ${grandTotal.toLocaleString()}`;
@@ -490,7 +490,7 @@ function updateCartUI(){
   // ── FIX 2: UPDATE CHECKOUT SCREEN SUMMARY ELEMENTS AUTOMATICALLY ──
   const checkoutShippingEl = document.getElementById('coShippingLine');
   if (checkoutShippingEl) {
-    checkoutShippingEl.textContent = actualShipping === 0 ? 'GH₵ 50' : `GH₵ ${actualShipping}`;
+    checkoutShippingEl.textContent = actualShipping === 50 ? 'GH₵ 50' : `GH₵ ${actualShipping}`;
   }
 
   const checkoutTotalEl = document.getElementById('coTotal');
