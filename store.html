@@ -305,23 +305,11 @@
           </div>
 
           <div class="co-section-title">Shipping Method</div>
-          <div class="shipping-options">
-            <div class="ship-opt selected" id="ship_standard" onclick="selectShipping('standard',0)">
-              <div class="ship-opt-name">Standard</div>
-              <div class="ship-opt-days">3–5 business days</div>
-              <div class="ship-opt-price" id="ship_standard_price">Free</div>
-            </div>
-            <div class="ship-opt" id="ship_express" onclick="selectShipping('express',30)">
-              <div class="ship-opt-name">Express</div>
-              <div class="ship-opt-days">1–2 business days</div>
-              <div class="ship-opt-price">GH₵ 30</div>
-            </div>
-            <div class="ship-opt" id="ship_diaspora" onclick="selectShipping('diaspora',80)">
-              <div class="ship-opt-name">Diaspora</div>
-              <div class="ship-opt-days">7–14 business days</div>
-              <div class="ship-opt-price">GH₵ 80</div>
-            </div>
+          <!-- Empty shell container to hold dynamic backend database models -->
+          <div class="shipping-options" id="dynamicShippingOptions">
+            <div style="color: rgba(255,255,255,0.4); font-size: 0.85rem; padding: 1rem;">Loading delivery profiles...</div>
           </div>
+
 
           <div class="co-section-title">Order Summary</div>
           <div class="co-order-summary">
