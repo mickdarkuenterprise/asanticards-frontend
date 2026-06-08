@@ -240,7 +240,22 @@ function observeReveal(){
     els.forEach(el=>el.classList.add('visible'));
   }
 }
-document.addEventListener('DOMContentLoaded',()=>{initImages();observeReveal();setTimeout(observeReveal,400);});
+document.addEventListener('DOMContentLoaded', () => {
+  // 1. Keep your existing functions running perfectly
+  initImages();
+  observeReveal();
+  setTimeout(observeReveal, 400);
+
+  // 2. Add product UI setup actions
+  if (document.getElementById('productsGrid')) {
+    renderStoreProducts();
+  }
+  updatePriceSpans(loadProducts());
+
+  // 3. Fire the live backend fetch to grab fresh data from Railway
+  fetchProductsFromAPI();
+});
+
 
 function initImages(){
   // Set all brand logo images
