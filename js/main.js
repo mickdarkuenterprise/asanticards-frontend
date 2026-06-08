@@ -733,77 +733,77 @@ async function initiatePaystack(){
   if(!phone){ showToast('!','Please enter your phone number','toast-red'); return; }
   if(!addr||!city){ showToast('!','Please enter your delivery address','toast-red'); return; }
 
+  // Guard: Paystack script must be loaded
+  if(typeof PaystackPop === 'undefined'){
+    showToast('!','Payment system not loaded — please refresh the page','toast-red');
+    return;
+  }
+
   const btn = document.getElementById('paystackBtn');
-  btn.disabled = true; 
+  btn.disabled = true;
   btn.innerHTML = '<span>Processing…</span>';
 
-  // Rely on your global pricing mechanics to capture cart sums securely
   const currentSubtotal = cartSubtotal();
-  const currentDiscount = 0; // Discount feature removed
-  const totalAmount = Math.max(0, (currentSubtotal - currentDiscount) + shippingCost);
-
+  const totalAmount = Math.max(0, currentSubtotal + shippingCost);
   let paystackKey = PAYSTACK_PUBLIC_KEY;
   let ref = 'ASANTI-' + Date.now() + '-' + Math.random().toString(36).substr(2,6).toUpperCase();
 
-  // Step 1: Create order on backend
+  // Try to create order on backend — non-blocking, fail silently
   try {
     const orderPayload = {
       customer_name: `${first} ${last}`,
-      email,
-      phone,
+      email, phone,
       address: `${addr}, ${city}`,
       shipping_method: shippingMethod,
-      // FIXED: Swapped 'i.qty' to match your cart's live structural key 'i.quantity'
-      items: cart.map(i => ({
-        product_id: i.id,
-        name: i.name,
-        qty: i.qty,
-        price: i.price
-      })),
+      items: cart.map(i => ({ product_id: i.id, name: i.name, qty: i.qty, price: i.price })),
       subtotal: currentSubtotal,
       shipping_cost: shippingCost,
       total: totalAmount,
     };
-    
-    const orderRes = await apiFetch('/api/orders', {
-      method: 'POST',
-      body: JSON.stringify(orderPayload),
-    });
-    if (orderRes.ref) ref = orderRes.ref;
-    if (orderRes.paystack_key) paystackKey = orderRes.paystack_key;
-  } catch (err) {
-    console.warn('Order pre-create failed, proceeding with client-side ref:', err.message);
+    const orderRes = await apiFetch('/api/orders', { method:'POST', body: JSON.stringify(orderPayload) });
+    if(orderRes.ref) ref = orderRes.ref;
+    if(orderRes.paystack_key) paystackKey = orderRes.paystack_key;
+  } catch(err) {
+    // API unavailable — continue with client-side ref, Paystack still works
+    console.warn('Order pre-create skipped:', err.message);
   }
 
-  const totalKobo = Math.round(totalAmount * 100); // Ensures clear integers for Pesewas conversions
+  const totalKobo = Math.round(totalAmount * 100);
 
-  const handler = PaystackPop.setup({
-    key: paystackKey,
-    email: email,
-    amount: totalKobo,
-    currency: 'GHS',
-    ref: ref,
-    firstname: first,
-    lastname: last,
-    phone: phone,
-    metadata: {
-      custom_fields: [
-        {display_name:'Customer Name', variable_name:'customer_name', value:`${first} ${last}`},
-        {display_name:'Delivery Address', variable_name:'address', value:`${addr}, ${city}`},
-        {display_name:'Shipping Method', variable_name:'shipping', value:shippingMethod},
-        {display_name:'Cart Items', variable_name:'cart', value: cart.map(i=>`${i.name} x${i.qty}`).join(', ')},
-      ]
-    },
-    onClose: function(){
-      btn.disabled = false;
-      btn.innerHTML = '<span>Pay Securely</span><span class="paystack-logo">via PAYSTACK</span>';
-      showToast('!','Payment cancelled','toast-red');
-    },
-    callback: function(response){
-      onPaymentSuccess(response, {first, last, email, phone, addr, city, ref});
-    }
-  });
-  handler.openIframe();
+  try {
+    const handler = PaystackPop.setup({
+      key: paystackKey,
+      email: email,
+      amount: totalKobo,
+      currency: 'GHS',
+      ref: ref,
+      firstname: first,
+      lastname: last,
+      phone: phone,
+      metadata: {
+        custom_fields: [
+          {display_name:'Customer Name',    variable_name:'customer_name', value:`${first} ${last}`},
+          {display_name:'Delivery Address', variable_name:'address',       value:`${addr}, ${city}`},
+          {display_name:'Shipping Method',  variable_name:'shipping',      value:shippingMethod},
+          {display_name:'Cart Items',       variable_name:'cart',          value:cart.map(i=>`${i.name} x${i.qty}`).join(', ')},
+        ]
+      },
+      onClose: function(){
+        btn.disabled = false;
+        btn.innerHTML = '<span>Pay Securely</span><span class="paystack-logo">via PAYSTACK</span>';
+        showToast('!','Payment cancelled','toast-red');
+      },
+      callback: function(response){
+        onPaymentSuccess(response, {first, last, email, phone, addr, city, ref});
+      }
+    });
+    handler.openIframe();
+  } catch(err) {
+    console.error('Paystack setup error:', err);
+    btn.disabled = false;
+    btn.innerHTML = '<span>Pay Securely</span><span class="paystack-logo">via PAYSTACK</span>';
+    showToast('!','Payment error — please try again','toast-red');
+  }
 }
 
 
