@@ -252,18 +252,30 @@ function observeReveal(){
   }
 }
 document.addEventListener('DOMContentLoaded', () => {
-  // 1. Run animation and image initializers once
+  // 1. Clear stale product/shipping cache if version changed
+  const CACHE_VERSION = 'v4';
+  if (localStorage.getItem('asanti_cache_version') !== CACHE_VERSION) {
+    localStorage.removeItem('asanti_products');
+    localStorage.removeItem('asanti_shipping');
+    localStorage.setItem('asanti_cache_version', CACHE_VERSION);
+  }
+
+  // 2. Run animation and image initializers once
   initImages();
   observeReveal();
   setTimeout(observeReveal, 400);
 
-  // 2. Set up layout and UI elements
+  // 3. Apply saved banner/content settings
+  const s = JSON.parse(localStorage.getItem('asanti_content') || '{}');
+  applyBanner(s);
+
+  // 4. Set up layout and UI elements
   if (document.getElementById('productsGrid')) {
     renderStoreProducts();
   }
   updatePriceSpans(loadProducts());
 
-  // 3. Fetch fresh product data from your Railway backend API
+  // 5. Fetch fresh data from Railway API
   fetchProductsFromAPI();
 });
 
@@ -551,7 +563,7 @@ async function fetchShippingTiersFromAPI() {
 
   try {
     // 1. Grab shipping tier configurations from your Railway backend
-    const data = await apiFetch('/api/shipping-methods');
+    const data = await apiFetch('/api/shipping_methods');
     const tiers = Array.isArray(data) ? data : data.shipping_methods || [];
     
     if (!tiers.length) throw new Error("No shipping profiles configured");
@@ -1385,74 +1397,7 @@ async function handleContactSubmit(){
   }
 }
 
-// ==========================================
-// BACKEND ROUTE HANDLING ENGINE
-// ==========================================
 
-let selectedShippingCost = 0;
-
-async function fetchAndRenderShipping() {
-  const container = document.getElementById('dynamicShippingOptions');
-  if (!container) return;
-
-  const backendUrl = "https://railway.app";
-
-  try {
-    const response = await fetch(backendUrl);
-    if (!response.ok) throw new Error("Failed to load options");
-    
-    const methods = await response.json(); 
-    container.innerHTML = ""; // Wipe loading text clear
-
-    // Set 'standard' delivery tier to serve as fallback default selection
-    let defaultMethod = methods.find(m => m.id === 'standard') || methods[0];
-
-    methods.forEach((method) => {
-      let numericalPrice = parseFloat(method.price);
-      
-      // Enforce your Free shipping threshold on orders GH₵ 200+
-      if (method.id === 'standard' && typeof cartSubtotal === 'function' && cartSubtotal() >= 200) {
-        numericalPrice = 0;
-      }
-
-      const priceDisplay = numericalPrice === 0 ? "Free" : `GH₵ ${numericalPrice}`;
-      const isSelected = method.id === defaultMethod.id;
-      const cssClass = isSelected ? "ship-opt selected" : "ship-opt";
-      
-      if (isSelected) {
-        selectedShippingCost = numericalPrice;
-      }
-
-      container.innerHTML += `
-        <div class="${cssClass}" id="ship_${method.id}" onclick="selectShipping('${method.id}', ${numericalPrice})">
-          <div class="ship-opt-name">${method.name}</div>
-          <div class="ship-opt-days">${method.delivery_time}</div>
-          <div class="ship-opt-price">${priceDisplay}</div>
-        </div>
-      `;
-    });
-
-    // Refresh totals with the fallback selected choice 
-    updateCheckoutSummary();
-
-  } catch (error) {
-    console.error("Shipping UI error:", error);
-    container.innerHTML = `<div class="ship-error" style="color: #ff6b6b; padding: 10px;">Unable to fetch network delivery rates.</div>`;
-  }
-}
-
-function selectShipping(methodId, price) {
-  // Clear highlighting from all options
-  document.querySelectorAll('.ship-opt').forEach(opt => opt.classList.remove('selected'));
-  
-  // Highlight the selected one
-  const target = document.getElementById(`ship_${methodId}`);
-  if (target) target.classList.add('selected');
-
-  // Propagate price adjustments through calculation matrix
-  selectedShippingCost = price;
-  updateCheckoutSummary();
-}
 
 
 // Secret admin access: type "admin" anywhere
