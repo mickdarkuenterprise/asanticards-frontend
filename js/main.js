@@ -405,7 +405,8 @@ function cartSubtotal(){
 }
 
 function updateCartUI(){
-  const count = cart.reduce((s,i)=>s+i.qty,0);
+  // Support both item.qty or item.quantity safely to prevent NaN errors
+  const count = cart.reduce((s,i) => s + (i.qty || i.quantity || 0), 0);
   const badge = document.getElementById('cartBadge');
   if(count > 0){ badge.textContent=count; badge.classList.add('show'); }
   else { badge.classList.remove('show'); }
@@ -429,6 +430,7 @@ function updateCartUI(){
   if(foot) foot.style.display='';
 
   cart.forEach(item=>{
+    const itemQty = item.qty || item.quantity || 1;
     const initials = item.name.split(' ').slice(0,2).map(w=>w[0]).join('');
     const div = document.createElement('div');
     div.className = 'cart-item';
@@ -436,15 +438,15 @@ function updateCartUI(){
       <div class="cart-item-img">${initials}</div>
       <div class="cart-item-info">
         <div class="cart-item-name">${item.name}</div>
-        <div class="cart-item-price">GH₵ ${(item.price*item.qty).toLocaleString()}</div>
+        <div class="cart-item-price">GH₵ ${(item.price * itemQty).toLocaleString()}</div>
         <div class="cart-item-qty">
           <button class="ciq-btn">−</button>
-          <span class="ciq-num">${item.qty}</span>
+          <span class="ciq-num">${itemQty}</span>
           <button class="ciq-btn">+</button>
         </div>
       </div>
       <button class="cart-item-remove"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>`;
-    // Attach events directly — no inline onclick, no ID quoting issues
+    
     const btns = div.querySelectorAll('.ciq-btn');
     btns[0].addEventListener('click', ()=>changeCartQty(item.id, -1));
     btns[1].addEventListener('click', ()=>changeCartQty(item.id,  1));
@@ -453,12 +455,39 @@ function updateCartUI(){
   });
 
   const sub = cartSubtotal();
-  const freeShipping = sub >= 200;
-  const actualShipping = shippingMethod==='standard' ? (freeShipping?0:10) : shippingCost;
-  document.getElementById('cartSubtotal').textContent = `GH₵ ${sub.toLocaleString()}`;
-  document.getElementById('cartShippingDisplay').textContent = actualShipping===0 ? 'Free' : `GH₵ ${actualShipping}`;
-  document.getElementById('cartTotal').textContent = `GH₵ ${(sub+actualShipping).toLocaleString()}`;
+  
+  // FIX 1: Removed the hardcoded conditional statement override. 
+  // It now purely respects whatever 'shippingCost' is loaded from your database (50, 80, 200)
+  const actualShipping = shippingCost;
+  const grandTotal = sub + actualShipping;
+
+  // ── UPDATE CART DRAWER ELEMENTS ──
+  const cartSubtotalEl = document.getElementById('cartSubtotal');
+  if (cartSubtotalEl) cartSubtotalEl.textContent = `GH₵ ${sub.toLocaleString()}`;
+  
+  const cartShippingEl = document.getElementById('cartShippingDisplay');
+  if (cartShippingEl) cartShippingEl.textContent = actualShipping === 0 ? 'Free' : `GH₵ ${actualShipping}`;
+  
+  const cartTotalEl = document.getElementById('cartTotal');
+  if (cartTotalEl) cartTotalEl.textContent = `GH₵ ${grandTotal.toLocaleString()}`;
+
+  // ── FIX 2: UPDATE CHECKOUT SCREEN SUMMARY ELEMENTS AUTOMATICALLY ──
+  const checkoutShippingEl = document.getElementById('coShippingLine');
+  if (checkoutShippingEl) {
+    checkoutShippingEl.textContent = actualShipping === 0 ? 'Free' : `GH₵ ${actualShipping}`;
+  }
+
+  const checkoutTotalEl = document.getElementById('coTotal');
+  if (checkoutTotalEl) {
+    checkoutTotalEl.textContent = `GH₵ ${grandTotal.toLocaleString()}`;
+  }
+
+  // Sync structural items lines if checkout workspace is rendering
+  if (typeof updateCheckoutSummary === 'function') {
+    updateCheckoutSummary();
+  }
 }
+
 
 function openCart(){
   document.getElementById('cartOverlay').classList.add('open');
