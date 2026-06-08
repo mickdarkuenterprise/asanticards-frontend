@@ -911,7 +911,63 @@ function switchAdminTab(btn, sectionId){
   document.getElementById(sectionId).classList.add('active');
   if(sectionId==='adminDiscounts') renderDiscounts();
   if(sectionId==='adminContent') loadContentSettings();
+  if(sectionId==='adminSettings') renderShippingMethods();
 }
+
+// ══════════════════════════════════════════════════
+// SHIPPING METHODS — Admin editor (localStorage-backed)
+// ══════════════════════════════════════════════════
+const SHIPPING_DEFAULT = [
+  {id:'standard', name:'Standard',  days:'3–5 business days', price:0,   freeOver:200},
+  {id:'express',  name:'Express',   days:'1–2 business days', price:30,  freeOver:null},
+  {id:'diaspora', name:'Diaspora',  days:'7–14 business days',price:80,  freeOver:null},
+];
+function loadShippingMethods(){
+  try{ return JSON.parse(localStorage.getItem('asanti_shipping')) || SHIPPING_DEFAULT; }
+  catch{ return SHIPPING_DEFAULT; }
+}
+function renderShippingMethods(){
+  const list = document.getElementById('shippingMethodsList');
+  if(!list) return;
+  const methods = loadShippingMethods();
+  list.innerHTML = methods.map(m => `
+    <div class="shipping-row" style="background:rgba(217,164,65,0.04);border:1px solid rgba(217,164,65,0.12);border-radius:8px;padding:12px;display:grid;grid-template-columns:1fr 1fr 1fr 80px 80px 32px;gap:8px;align-items:center">
+      <div><div class="admin-label" style="font-size:0.65rem;margin-bottom:3px">Name</div><input class="admin-input sm-name" value="${m.name}" placeholder="e.g. Standard"></div>
+      <div><div class="admin-label" style="font-size:0.65rem;margin-bottom:3px">ID</div><input class="admin-input sm-id" value="${m.id}" placeholder="e.g. standard"></div>
+      <div><div class="admin-label" style="font-size:0.65rem;margin-bottom:3px">Delivery time</div><input class="admin-input sm-days" value="${m.days}" placeholder="e.g. 3–5 business days"></div>
+      <div><div class="admin-label" style="font-size:0.65rem;margin-bottom:3px">Price (GH₵)</div><input class="admin-input sm-price" type="number" min="0" value="${m.price}"></div>
+      <div><div class="admin-label" style="font-size:0.65rem;margin-bottom:3px">Free over (GH₵)</div><input class="admin-input sm-freeover" type="number" min="0" value="${m.freeOver||''}"></div>
+      <button onclick="this.closest('.shipping-row').remove()" style="background:rgba(220,50,50,0.15);border:1px solid rgba(220,50,50,0.3);border-radius:6px;color:#e05;padding:6px;cursor:pointer">✕</button>
+    </div>`).join('');
+}
+function addShippingMethod(){
+  const list = document.getElementById('shippingMethodsList');
+  if(!list) return;
+  const row = document.createElement('div');
+  row.className = 'shipping-row';
+  row.style.cssText = 'background:rgba(217,164,65,0.04);border:1px solid rgba(217,164,65,0.12);border-radius:8px;padding:12px;display:grid;grid-template-columns:1fr 1fr 1fr 80px 80px 32px;gap:8px;align-items:center';
+  row.innerHTML = `
+    <div><div class="admin-label" style="font-size:0.65rem;margin-bottom:3px">Name</div><input class="admin-input sm-name" placeholder="e.g. Pickup"></div>
+    <div><div class="admin-label" style="font-size:0.65rem;margin-bottom:3px">ID</div><input class="admin-input sm-id" placeholder="e.g. pickup"></div>
+    <div><div class="admin-label" style="font-size:0.65rem;margin-bottom:3px">Delivery time</div><input class="admin-input sm-days" placeholder="e.g. Same day"></div>
+    <div><div class="admin-label" style="font-size:0.65rem;margin-bottom:3px">Price (GH₵)</div><input class="admin-input sm-price" type="number" min="0" value="0"></div>
+    <div><div class="admin-label" style="font-size:0.65rem;margin-bottom:3px">Free over (GH₵)</div><input class="admin-input sm-freeover" type="number" min="0" placeholder=""></div>
+    <button onclick="this.closest('.shipping-row').remove()" style="background:rgba(220,50,50,0.15);border:1px solid rgba(220,50,50,0.3);border-radius:6px;color:#e05;padding:6px;cursor:pointer">✕</button>`;
+  list.appendChild(row);
+}
+function saveShippingMethods(){
+  const rows = document.querySelectorAll('.shipping-row');
+  const methods = Array.from(rows).map(row => ({
+    id:       row.querySelector('.sm-id').value.trim().toLowerCase().replace(/\s+/g,'_'),
+    name:     row.querySelector('.sm-name').value.trim(),
+    days:     row.querySelector('.sm-days').value.trim(),
+    price:    parseFloat(row.querySelector('.sm-price').value)||0,
+    freeOver: row.querySelector('.sm-freeover').value ? parseFloat(row.querySelector('.sm-freeover').value) : null,
+  })).filter(m=>m.name);
+  localStorage.setItem('asanti_shipping', JSON.stringify(methods));
+  showToast('\u2713','Shipping methods saved','toast-green');
+}
+
 function renderAdmin(){
   renderAdminStats();
   renderAdminProducts();
@@ -919,6 +975,7 @@ function renderAdmin(){
   renderAdminAlerts();
   renderLowStock();
   renderDiscounts();
+  renderShippingMethods();
   loadContentSettings();
 }
 
