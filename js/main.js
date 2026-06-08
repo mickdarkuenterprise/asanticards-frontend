@@ -42,7 +42,7 @@ function updatePriceSpans(products) {
 // Get live price for a product id (used in addToCart onclick calls)
 function getProductPrice(id) {
   const products = loadProducts();
-  const p = products.find(prod => prod.id === id);
+  const p = products.find(prod => prod.id == id);
   return p ? parseFloat(p.price) : 0;
 }
 
@@ -489,6 +489,63 @@ function selectShipping(method, cost){
   }
   updateCheckoutSummary();
 }
+
+// ══════════════════════════════════════════════════
+// DYNAMIC SHIPPING TIERS FROM BACKEND
+// ══════════════════════════════════════════════════
+async function fetchShippingTiersFromAPI() {
+  const container = document.getElementById('dynamicShippingOptions');
+  if (!container) return;
+
+  try {
+    // 1. Grab shipping tier configurations from your Railway backend
+    const data = await apiFetch('/api/shipping-methods');
+    const tiers = Array.isArray(data) ? data : data.shipping_methods || [];
+    
+    if (!tiers.length) throw new Error("No shipping profiles configured");
+
+    // 2. Generate HTML items dynamically using actual rows from Supabase
+    container.innerHTML = tiers.map((tier, index) => {
+      const isFree = parseFloat(tier.price) === 0;
+      const displayPrice = isFree ? 'Free' : `GH₵ ${parseFloat(tier.price)}`;
+      const isSelectedClass = index === 0 ? 'selected' : '';
+      
+      if (index === 0) {
+        shippingMethod = tier.id;
+        shippingCost = parseFloat(tier.price);
+      }
+
+      return `
+        <div class="ship-opt ${isSelectedClass}" id="ship_${tier.id}" onclick="selectShipping('${tier.id}', ${tier.price})">
+          <div class="ship-opt-name">${tier.name}</div>
+          <div class="ship-opt-days">${tier.delivery_time || tier.days || ''}</div>
+          <div class="ship-opt-price">${displayPrice}</div>
+        </div>
+      `;
+    }).join('');
+
+    updateCartUI();
+
+  } catch (err) {
+    console.warn('Backend shipping endpoint missing or down. Loading safety fallbacks:', err.message);
+    
+    // Safety net layout matches your exact 50 / 80 / 200 numbers if the API fails
+    container.innerHTML = `
+      <div class="ship-opt selected" id="ship_standard" onclick="selectShipping('standard',50)">
+        <div class="ship-opt-name">Standard</div><div class="ship-opt-days">3–5 business days</div><div class="ship-opt-price">GH₵ 50</div>
+      </div>
+      <div class="ship-opt" id="ship_express" onclick="selectShipping('express',80)">
+        <div class="ship-opt-name">Express</div><div class="ship-opt-days">1–2 business days</div><div class="ship-opt-price">GH₵ 80</div>
+      </div>
+      <div class="ship-opt" id="ship_diaspora" onclick="selectShipping('diaspora',200)">
+        <div class="ship-opt-name">Diaspora</div><div class="ship-opt-days">7–14 business days</div><div class="ship-opt-price">GH₵ 200</div>
+      </div>
+    `;
+    selectShipping('standard', 50);
+  }
+}
+
+
 
 function updateCheckoutSummary(){
   const lines = document.getElementById('coOrderLines');
@@ -1193,6 +1250,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   // Show cached/default prices immediately, then fetch live from Railway
   updatePriceSpans(loadProducts());
   fetchProductsFromAPI();
+
+  fetchShippingTiersFromAPI();
 });
 
 // Secret admin access: type "admin" anywhere
