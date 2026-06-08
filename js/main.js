@@ -7,7 +7,7 @@ const IMG_AHENNIE = "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZ
 // ══════════════════════════════════════════════════
 const API_BASE = 'https://asanticards-production.up.railway.app';
 const PAYSTACK_PUBLIC_KEY = 'pk_live_ec1ec560fc23b6f40264e23c7782d27fad86171b';
-const ADMIN_PASSWORD = 'admin123'; // Fallback only — stored in localStorage after first login
+
 
 // ── API helpers ──
 async function apiFetch(path, options = {}) {
@@ -62,16 +62,27 @@ function loadProducts() {
   } catch { _productsCache = PRODUCTS_DEFAULT; }
   return _productsCache;
 }
-function saveProducts(p) {
-  _productsCache = p;
-  localStorage.setItem('asanti_products', JSON.stringify(p));
-  // Persist each product to API
-  p.forEach(prod => {
-    apiFetch('/api/products/' + prod.id, {
-      method: 'PUT',
-      body: JSON.stringify(prod),
-    }).catch(() => {}); // Silent fail — localStorage already updated
-  });
+async function saveProducts(products) {
+  const token = localStorage.getItem('asanti_admin_token');
+
+  if (!token) {
+    throw new Error('Admin authentication required');
+  }
+
+  _productsCache = products;
+  localStorage.setItem('asanti_products', JSON.stringify(products));
+
+  await Promise.all(
+    products.map(prod =>
+      apiFetch(`/api/products/${prod.id}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(prod)
+      })
+    )
+  );
 }
 
 async function fetchProductsFromAPI() {
@@ -241,20 +252,21 @@ function observeReveal(){
   }
 }
 document.addEventListener('DOMContentLoaded', () => {
-  // 1. Keep your existing functions running perfectly
+  // 1. Run animation and image initializers once
   initImages();
   observeReveal();
   setTimeout(observeReveal, 400);
 
-  // 2. Add product UI setup actions
+  // 2. Set up layout and UI elements
   if (document.getElementById('productsGrid')) {
     renderStoreProducts();
   }
   updatePriceSpans(loadProducts());
 
-  // 3. Fire the live backend fetch to grab fresh data from Railway
+  // 3. Fetch fresh product data from your Railway backend API
   fetchProductsFromAPI();
 });
+
 
 
 function initImages(){
@@ -401,12 +413,16 @@ function changeCartQty(id, delta){
 }
 
 function cartSubtotal(){
-  return cart.reduce((s,i)=>s+i.price*i.qty, 0);
+  return cart.reduce((sum, item) => {
+    return sum + (item.price * (item.qty || item.quantity || 0));
+  }, 0);
 }
 
 function updateCartUI(){
   // Support both item.qty or item.quantity safely to prevent NaN errors
-  const count = cart.reduce((s,i) => s + (i.qty || i.quantity || 0), 0);
+  const count = cart.reduce((sum, item) => {
+    return sum + (item.qty || item.quantity || 0);
+  }, 0);
   const badge = document.getElementById('cartBadge');
   if(count > 0){ badge.textContent=count; badge.classList.add('show'); }
   else { badge.classList.remove('show'); }
@@ -503,21 +519,28 @@ function closeCart(){
 // ══════════════════════════════════════════════════
 // CHECKOUT
 // ══════════════════════════════════════════════════
-function selectShipping(method, cost){
-  shippingMethod = method; shippingCost = cost;
-  document.querySelectorAll('.ship-opt').forEach(el=>el.classList.remove('selected'));
-  document.getElementById('ship_'+method).classList.add('selected');
-  updateCheckoutSummary();
-  updateCartUI();
-  // free shipping on standard if over 200
+function selectShipping(method, cost) {
+  shippingMethod = method;
   const sub = cartSubtotal();
-  if(method==='standard'){
-    const actualCost = sub>=200 ? 0 : 10;
-    shippingCost = actualCost;
-    document.getElementById('ship_standard_price').textContent = sub>=200 ? 'Free' : 'GH₵ 10';
+
+  // 1. Calculate the correct cost immediately
+  if (method === 'standard') {
+    shippingCost = sub >= 200 ? 0 : 10;
+    document.getElementById('ship_standard_price').textContent = sub >= 200 ? 'Free' : 'GH₵ 10';
+  } else {
+    shippingCost = cost;
   }
+
+  // 2. Update the UI active states
+  document.querySelectorAll('.ship-opt').forEach(el => el.classList.remove('selected'));
+  const targetOpt = document.getElementById('ship_' + method);
+  if (targetOpt) targetOpt.classList.add('selected');
+
+  // 3. Update calculations and totals ONCE
+  updateCartUI();
   updateCheckoutSummary();
 }
+
 
 // ══════════════════════════════════════════════════
 // DYNAMIC SHIPPING TIERS FROM BACKEND
@@ -580,7 +603,15 @@ function updateCheckoutSummary(){
   const lines = document.getElementById('coOrderLines');
   if(!lines) return;
   let html = '';
-  cart.forEach(i=>{ html+=`<div class="co-order-line"><span>${i.name} × ${i.qty}</span><span>GH₵ ${(i.price*i.qty).toLocaleString()}</span></div>`; });
+  cart.forEach(item => {
+  const qty = item.qty || item.quantity || 1;
+  html += `
+    <div class="co-order-line">
+      <span>${item.name} × ${qty}</span>
+      <span>GH₵ ${(item.price * qty).toLocaleString()}</span>
+    </div>
+  `;
+  });
   lines.innerHTML = html;
   document.getElementById('coShippingLine').textContent = shippingCost===0 ? 'Free' : `GH₵ ${shippingCost}`;
   const total = cartSubtotal() + shippingCost;
@@ -671,8 +702,8 @@ async function initiatePaystack(){
   btn.innerHTML = '<span>Processing…</span>';
 
   // Rely on your global pricing mechanics to capture cart sums securely
-  const currentSubtotal = getCartSubtotal();
-  const currentDiscount = getDiscountAmount(currentSubtotal);
+  const currentSubtotal = cartSubtotal();
+  const currentDiscount = 0; // Discount feature removed
   const totalAmount = Math.max(0, (currentSubtotal - currentDiscount) + shippingCost);
 
   let paystackKey = PAYSTACK_PUBLIC_KEY;
@@ -687,7 +718,12 @@ async function initiatePaystack(){
       address: `${addr}, ${city}`,
       shipping_method: shippingMethod,
       // FIXED: Swapped 'i.qty' to match your cart's live structural key 'i.quantity'
-      items: cart.map(i => ({ product_id: i.id, name: i.name, qty: i.quantity, price: i.price })),
+      items: cart.map(i => ({
+        product_id: i.id,
+        name: i.name,
+        qty: i.qty,
+        price: i.price
+      })),
       subtotal: currentSubtotal,
       shipping_cost: shippingCost,
       total: totalAmount,
@@ -719,8 +755,7 @@ async function initiatePaystack(){
         {display_name:'Customer Name', variable_name:'customer_name', value:`${first} ${last}`},
         {display_name:'Delivery Address', variable_name:'address', value:`${addr}, ${city}`},
         {display_name:'Shipping Method', variable_name:'shipping', value:shippingMethod},
-        // FIXED: Swapped 'i.qty' to 'i.quantity' here as well
-        {display_name:'Cart Items', variable_name:'cart', value: cart.map(i=>`${i.name} x${i.quantity}`).join(', ')},
+        {display_name:'Cart Items', variable_name:'cart', value: cart.map(i=>`${i.name} x${i.qty}`).join(', ')},
       ]
     },
     onClose: function(){
@@ -748,8 +783,8 @@ function onPaymentSuccess(response, customer){
   cart.forEach(item => {
     const prod = products.find(p => p.id === item.id);
     if (prod) { 
-      // FIXED: Swapped item.qty to match your cart's live 'item.quantity' property
-      prod.stock = Math.max(0, prod.stock - item.quantity); 
+    
+      prod.stock = Math.max(0, prod.stock - item.qty); 
     }
   });
   saveProducts(products);
@@ -825,10 +860,8 @@ function closeAdmin(){
   document.body.style.overflow='';
 }
 async function checkAdminPw(){
-  const stored = localStorage.getItem('asanti_admin_pw') || ADMIN_PASSWORD;
   const pw = document.getElementById('adminPwInput').value;
 
-  // Try API auth first
   try {
     const res = await apiFetch('/api/admin/login', {
       method: 'POST',
@@ -841,18 +874,10 @@ async function checkAdminPw(){
     document.getElementById('adminDashboard').style.display='block';
     renderAdmin();
     fetchOrdersFromAPI();
-    return;
   } catch (err) {
-    // Fallback to local password check
-    if(pw === stored){
-      document.getElementById('adminLoginScreen').style.display='none';
-      document.getElementById('adminDashboard').style.display='block';
-      renderAdmin();
-    } else {
-      showToast('✕','Incorrect password','toast-red');
-      document.getElementById('adminPwInput').value='';
-      document.getElementById('adminPwInput').focus();
-    }
+    showToast('✕','Incorrect password','toast-red');
+    document.getElementById('adminPwInput').value='';
+    document.getElementById('adminPwInput').focus();
   }
 }
 function switchAdminTab(btn, sectionId){
@@ -1180,19 +1205,26 @@ function applyDiscountCode(code){
 }
 
 // ── SETTINGS ──
-function changeAdminPassword(){
+async function changeAdminPassword(){
   const current=document.getElementById('pwCurrent').value;
   const newPw=document.getElementById('pwNew').value;
   const confirm=document.getElementById('pwConfirm').value;
-  const stored=localStorage.getItem('asanti_admin_pw')||ADMIN_PASSWORD;
-  if(current!==stored){showToast('✕','Current password incorrect','toast-red');return;}
   if(!newPw||newPw.length<6){showToast('⚠','New password must be at least 6 characters','toast-red');return;}
   if(newPw!==confirm){showToast('⚠','Passwords do not match','toast-red');return;}
-  localStorage.setItem('asanti_admin_pw',newPw);
-  document.getElementById('pwCurrent').value='';
-  document.getElementById('pwNew').value='';
-  document.getElementById('pwConfirm').value='';
-  showToast('✓','Password updated','toast-green');
+  try {
+    const token = localStorage.getItem('asanti_admin_token');
+    await apiFetch('/api/admin/change-password', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ current_password: current, new_password: newPw }),
+    });
+    document.getElementById('pwCurrent').value='';
+    document.getElementById('pwNew').value='';
+    document.getElementById('pwConfirm').value='';
+    showToast('✓','Password updated','toast-green');
+  } catch(err) {
+    showToast('✕','Password change failed: ' + err.message, 'toast-red');
+  }
 }
 function resetProducts(){
   if(!confirm('Reset all products to defaults? Custom products and images will be lost.')) return;
@@ -1272,16 +1304,7 @@ async function handleContactSubmit(){
   }
 }
 
-// init banner on page load
-document.addEventListener('DOMContentLoaded',()=>{
-  const s=JSON.parse(localStorage.getItem('asanti_content')||'{}');
-  applyBanner(s);
-  // Show cached/default prices immediately, then fetch live from Railway
-  updatePriceSpans(loadProducts());
-  fetchProductsFromAPI();
 
-  fetchShippingTiersFromAPI();
-});
 
 // Secret admin access: type "admin" anywhere
 let adminKeyBuffer='';
