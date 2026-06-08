@@ -542,9 +542,27 @@ function getCheckoutFormHTML(){
 }
 
 function closeCheckout(){
-  document.getElementById('checkoutOverlay').classList.remove('open');
-  document.body.style.overflow='';
+  // 1. Hide the modal overlay using your existing structure
+  const overlay = document.getElementById('checkoutOverlay');
+  if (overlay) overlay.classList.remove('open');
+  
+  // 2. Re-enable page scrolling
+  document.body.style.overflow = '';
+
+  // 3. Clear the form inputs so they are fresh for the next order
+  const fields = ['co_first', 'co_last', 'co_email', 'co_phone', 'co_addr', 'co_city'];
+  fields.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+
+  // 4. Force a page refresh or clear out the success HTML content box
+  // This prevents the old "Order Confirmed" template from lingering around
+  setTimeout(() => {
+    window.location.reload(); 
+  }, 300);
 }
+
 
 // ══════════════════════════════════════════════════
 // PAYSTACK INTEGRATION (API-backed)
@@ -563,11 +581,16 @@ async function initiatePaystack(){
   if(!addr||!city){ showToast('!','Please enter your delivery address','toast-red'); return; }
 
   const btn = document.getElementById('paystackBtn');
-  btn.disabled=true; btn.innerHTML='<span>Processing…</span>';
+  btn.disabled = true; 
+  btn.innerHTML = '<span>Processing…</span>';
+
+  // Rely on your global pricing mechanics to capture cart sums securely
+  const currentSubtotal = getCartSubtotal();
+  const currentDiscount = getDiscountAmount(currentSubtotal);
+  const totalAmount = Math.max(0, (currentSubtotal - currentDiscount) + shippingCost);
 
   let paystackKey = PAYSTACK_PUBLIC_KEY;
   let ref = 'ASANTI-' + Date.now() + '-' + Math.random().toString(36).substr(2,6).toUpperCase();
-  const totalAmount = cartSubtotal() + shippingCost;
 
   // Step 1: Create order on backend
   try {
@@ -577,11 +600,13 @@ async function initiatePaystack(){
       phone,
       address: `${addr}, ${city}`,
       shipping_method: shippingMethod,
-      items: cart.map(i => ({ product_id: i.id, name: i.name, qty: i.qty, price: i.price })),
-      subtotal: cartSubtotal(),
+      // FIXED: Swapped 'i.qty' to match your cart's live structural key 'i.quantity'
+      items: cart.map(i => ({ product_id: i.id, name: i.name, qty: i.quantity, price: i.price })),
+      subtotal: currentSubtotal,
       shipping_cost: shippingCost,
       total: totalAmount,
     };
+    
     const orderRes = await apiFetch('/api/orders', {
       method: 'POST',
       body: JSON.stringify(orderPayload),
@@ -592,7 +617,7 @@ async function initiatePaystack(){
     console.warn('Order pre-create failed, proceeding with client-side ref:', err.message);
   }
 
-  const totalKobo = totalAmount * 100;
+  const totalKobo = Math.round(totalAmount * 100); // Ensures clear integers for Pesewas conversions
 
   const handler = PaystackPop.setup({
     key: paystackKey,
@@ -608,20 +633,22 @@ async function initiatePaystack(){
         {display_name:'Customer Name', variable_name:'customer_name', value:`${first} ${last}`},
         {display_name:'Delivery Address', variable_name:'address', value:`${addr}, ${city}`},
         {display_name:'Shipping Method', variable_name:'shipping', value:shippingMethod},
-        {display_name:'Cart Items', variable_name:'cart', value: cart.map(i=>`${i.name} x${i.qty}`).join(', ')},
+        // FIXED: Swapped 'i.qty' to 'i.quantity' here as well
+        {display_name:'Cart Items', variable_name:'cart', value: cart.map(i=>`${i.name} x${i.quantity}`).join(', ')},
       ]
     },
     onClose: function(){
-      btn.disabled=false;
-      btn.innerHTML='<span>Pay Securely</span><span class="paystack-logo">via PAYSTACK</span>';
+      btn.disabled = false;
+      btn.innerHTML = '<span>Pay Securely</span><span class="paystack-logo">via PAYSTACK</span>';
       showToast('!','Payment cancelled','toast-red');
     },
     callback: function(response){
-      onPaymentSuccess(response, {first,last,email,phone,addr,city,ref});
+      onPaymentSuccess(response, {first, last, email, phone, addr, city, ref});
     }
   });
   handler.openIframe();
 }
+
 
 function onPaymentSuccess(response, customer){
   // Notify backend of payment (backup to webhook)
@@ -632,11 +659,19 @@ function onPaymentSuccess(response, customer){
 
   // Deduct stock locally (webhook will also do this on backend)
   const products = loadProducts();
-  cart.forEach(item=>{
-    const prod = products.find(p=>p.id===item.id);
-    if(prod){ prod.stock = Math.max(0, prod.stock - item.qty); }
+  cart.forEach(item => {
+    const prod = products.find(p => p.id === item.id);
+    if (prod) { 
+      // FIXED: Swapped item.qty to match your cart's live 'item.quantity' property
+      prod.stock = Math.max(0, prod.stock - item.quantity); 
+    }
   });
   saveProducts(products);
+
+  // Capture current pricing structure metrics securely including any active discounts
+  const currentSubtotal = cartSubtotal();
+  const currentDiscount = typeof getDiscountAmount === 'function' ? getDiscountAmount(currentSubtotal) : 0;
+  const finalCalculatedTotal = Math.max(0, (currentSubtotal - currentDiscount) + shippingCost);
 
   // Save order locally
   const orders = loadOrders();
@@ -649,9 +684,9 @@ function onPaymentSuccess(response, customer){
     address: `${customer.addr}, ${customer.city}`,
     shipping: shippingMethod,
     items: [...cart],
-    subtotal: cartSubtotal(),
+    subtotal: currentSubtotal,
     shippingCost: shippingCost,
-    total: cartSubtotal() + shippingCost,
+    total: finalCalculatedTotal, // FIXED: Now securely saves the exact discounted total amount paid
     status: 'paid',
     date: new Date().toISOString(),
   });
@@ -662,7 +697,7 @@ function onPaymentSuccess(response, customer){
   cart = [];
   updateCartUI();
 
-  // Show success
+  // Show success modal overlay contents dynamically
   document.getElementById('checkoutModalTitle').textContent = 'Order Confirmed';
   document.getElementById('checkoutContent').innerHTML = `
     <div class="order-success">
@@ -672,8 +707,9 @@ function onPaymentSuccess(response, customer){
       <p class="success-msg">Thank you for your order! A confirmation has been sent to <strong style="color:var(--gold)">${customer.email}</strong>. Your order will be dispatched within 1–2 business days.</p>
       <button class="btn btn-gold" style="margin-top:28px" onclick="closeCheckout()">Continue Shopping</button>
     </div>`;
-  showToast('✓','Order placed successfully!','toast-green');
+  showToast('✓', 'Order placed successfully!', 'toast-green');
 }
+
 
 // ══════════════════════════════════════════════════
 // TOAST NOTIFICATIONS
