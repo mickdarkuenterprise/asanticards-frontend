@@ -252,30 +252,18 @@ function observeReveal(){
   }
 }
 document.addEventListener('DOMContentLoaded', () => {
-  // 1. Clear stale product/shipping cache if version changed
-  const CACHE_VERSION = 'v4';
-  if (localStorage.getItem('asanti_cache_version') !== CACHE_VERSION) {
-    localStorage.removeItem('asanti_products');
-    localStorage.removeItem('asanti_shipping');
-    localStorage.setItem('asanti_cache_version', CACHE_VERSION);
-  }
-
-  // 2. Run animation and image initializers once
+  // 1. Run animation and image initializers once
   initImages();
   observeReveal();
   setTimeout(observeReveal, 400);
 
-  // 3. Apply saved banner/content settings
-  const s = JSON.parse(localStorage.getItem('asanti_content') || '{}');
-  applyBanner(s);
-
-  // 4. Set up layout and UI elements
+  // 2. Set up layout and UI elements
   if (document.getElementById('productsGrid')) {
     renderStoreProducts();
   }
   updatePriceSpans(loadProducts());
 
-  // 5. Fetch fresh data from Railway API
+  // 3. Fetch fresh product data from your Railway backend API
   fetchProductsFromAPI();
 });
 
@@ -563,7 +551,7 @@ async function fetchShippingTiersFromAPI() {
 
   try {
     // 1. Grab shipping tier configurations from your Railway backend
-    const data = await apiFetch('/api/shipping_methods');
+    const data = await apiFetch('/api/shipping-methods');
     const tiers = Array.isArray(data) ? data : data.shipping_methods || [];
     
     if (!tiers.length) throw new Error("No shipping profiles configured");
@@ -611,36 +599,25 @@ async function fetchShippingTiersFromAPI() {
 
 
 
-// Replace your old version of updateCheckoutSummary with this one:
 function updateCheckoutSummary(){
   const lines = document.getElementById('coOrderLines');
   if(!lines) return;
   let html = '';
   cart.forEach(item => {
-    const qty = item.qty || item.quantity || 1;
-    html += `
-      <div class="co-order-line">
-        <span>${item.name} × ${qty}</span>
-        <span>GH₵ ${(item.price * qty).toLocaleString()}</span>
-      </div>
-    `;
+  const qty = item.qty || item.quantity || 1;
+  html += `
+    <div class="co-order-line">
+      <span>${item.name} × ${qty}</span>
+      <span>GH₵ ${(item.price * qty).toLocaleString()}</span>
+    </div>
+  `;
   });
   lines.innerHTML = html;
-  
-  // Use selectedShippingCost instead of a static shippingCost variable
-  const shippingLine = document.getElementById('coShippingLine');
-  if (shippingLine) {
-    shippingLine.textContent = selectedShippingCost === 0 ? 'Free' : `GH₵ ${selectedShippingCost}`;
-  }
-  
-  const total = cartSubtotal() + selectedShippingCost;
-  const totalLine = document.getElementById('coTotal');
-  if (totalLine) {
-    totalLine.textContent = `GH₵ ${total.toLocaleString()}`;
-  }
+  document.getElementById('coShippingLine').textContent = shippingCost===0 ? 'Free' : `GH₵ ${shippingCost}`;
+  const total = cartSubtotal() + shippingCost;
+  document.getElementById('coTotal').textContent = `GH₵ ${total.toLocaleString()}`;
 }
 
-// Replace your old version of openCheckout with this one:
 function openCheckout(){
   if(cart.length===0){ showToast('!','Your cart is empty','toast-red'); return; }
   closeCart();
@@ -649,12 +626,8 @@ function openCheckout(){
   document.getElementById('checkoutOverlay').classList.add('open');
   document.getElementById('checkoutModalTitle').textContent = 'Checkout';
   document.body.style.overflow='hidden';
-
-  // CRITICAL STEP: Fire off the backend fetch immediately after layout renders
-  fetchAndRenderShipping();
 }
 
-// Replace your old version of getCheckoutFormHTML with this clean, dynamic framework:
 function getCheckoutFormHTML(){
   return `<div class="checkout-body">
     <div class="checkout-grid">
@@ -671,28 +644,19 @@ function getCheckoutFormHTML(){
           <option value="GH">Ghana</option><option value="NG">Nigeria</option><option value="UK">United Kingdom</option><option value="US">United States</option><option value="CA">Canada</option><option value="other">Other</option>
         </select>
       </div>
-      
-      <!-- FIXED ELEMENT: The dynamic loading container placeholder -->
       <div class="co-section-title">Shipping Method</div>
-      <div id="dynamicShippingOptions" class="shipping-options">
-        <div class="ship-loading" style="color: #888; font-style: italic; padding: 10px;">
-          Loading shipping options...
-        </div>
+      <div class="shipping-options">
+        <div class="ship-opt selected" id="ship_standard" onclick="selectShipping('standard',0)"><div class="ship-opt-name">Standard</div><div class="ship-opt-days">3–5 business days</div><div class="ship-opt-price" id="ship_standard_price">${cartSubtotal()>=200?'Free':'GH₵ 10'}</div></div>
+        <div class="ship-opt" id="ship_express" onclick="selectShipping('express',30)"><div class="ship-opt-name">Express</div><div class="ship-opt-days">1–2 business days</div><div class="ship-opt-price">GH₵ 30</div></div>
+        <div class="ship-opt" id="ship_diaspora" onclick="selectShipping('diaspora',80)"><div class="ship-opt-name">Diaspora</div><div class="ship-opt-days">7–14 business days</div><div class="ship-opt-price">GH₵ 80</div></div>
       </div>
-      
       <div class="co-section-title">Order Summary</div>
-      <div class="co-order-summary">
-        <div id="coOrderLines"></div>
-        <div class="co-order-line"><span>Shipping</span><span id="coShippingLine">Loading...</span></div>
-        <div class="co-order-line total"><span>Total</span><span id="coTotal">GH₵ 0</span></div>
-      </div>
+      <div class="co-order-summary"><div id="coOrderLines"></div><div class="co-order-line"><span>Shipping</span><span id="coShippingLine">Free</span></div><div class="co-order-line total"><span>Total</span><span id="coTotal">GH₵ 0</span></div></div>
       <button class="paystack-btn" id="paystackBtn" onclick="initiatePaystack()"><span>Pay Securely</span><span class="paystack-logo">via PAYSTACK</span></button>
       <p style="grid-column:1/-1;text-align:center;font-size:0.72rem;color:rgba(233,208,162,0.25);margin-top:-6px">256-bit SSL encryption · Your data is always protected</p>
     </div>
   </div>`;
 }
-
-// Keep your closeCheckout() function exactly as it is now.
 
 function closeCheckout(){
   // 1. Hide the modal overlay using your existing structure
@@ -733,77 +697,77 @@ async function initiatePaystack(){
   if(!phone){ showToast('!','Please enter your phone number','toast-red'); return; }
   if(!addr||!city){ showToast('!','Please enter your delivery address','toast-red'); return; }
 
-  // Guard: Paystack script must be loaded
-  if(typeof PaystackPop === 'undefined'){
-    showToast('!','Payment system not loaded — please refresh the page','toast-red');
-    return;
-  }
-
   const btn = document.getElementById('paystackBtn');
-  btn.disabled = true;
+  btn.disabled = true; 
   btn.innerHTML = '<span>Processing…</span>';
 
+  // Rely on your global pricing mechanics to capture cart sums securely
   const currentSubtotal = cartSubtotal();
-  const totalAmount = Math.max(0, currentSubtotal + shippingCost);
+  const currentDiscount = 0; // Discount feature removed
+  const totalAmount = Math.max(0, (currentSubtotal - currentDiscount) + shippingCost);
+
   let paystackKey = PAYSTACK_PUBLIC_KEY;
   let ref = 'ASANTI-' + Date.now() + '-' + Math.random().toString(36).substr(2,6).toUpperCase();
 
-  // Try to create order on backend — non-blocking, fail silently
+  // Step 1: Create order on backend
   try {
     const orderPayload = {
       customer_name: `${first} ${last}`,
-      email, phone,
+      email,
+      phone,
       address: `${addr}, ${city}`,
       shipping_method: shippingMethod,
-      items: cart.map(i => ({ product_id: i.id, name: i.name, qty: i.qty, price: i.price })),
+      // FIXED: Swapped 'i.qty' to match your cart's live structural key 'i.quantity'
+      items: cart.map(i => ({
+        product_id: i.id,
+        name: i.name,
+        qty: i.qty,
+        price: i.price
+      })),
       subtotal: currentSubtotal,
       shipping_cost: shippingCost,
       total: totalAmount,
     };
-    const orderRes = await apiFetch('/api/orders', { method:'POST', body: JSON.stringify(orderPayload) });
-    if(orderRes.ref) ref = orderRes.ref;
-    if(orderRes.paystack_key) paystackKey = orderRes.paystack_key;
-  } catch(err) {
-    // API unavailable — continue with client-side ref, Paystack still works
-    console.warn('Order pre-create skipped:', err.message);
-  }
-
-  const totalKobo = Math.round(totalAmount * 100);
-
-  try {
-    const handler = PaystackPop.setup({
-      key: paystackKey,
-      email: email,
-      amount: totalKobo,
-      currency: 'GHS',
-      ref: ref,
-      firstname: first,
-      lastname: last,
-      phone: phone,
-      metadata: {
-        custom_fields: [
-          {display_name:'Customer Name',    variable_name:'customer_name', value:`${first} ${last}`},
-          {display_name:'Delivery Address', variable_name:'address',       value:`${addr}, ${city}`},
-          {display_name:'Shipping Method',  variable_name:'shipping',      value:shippingMethod},
-          {display_name:'Cart Items',       variable_name:'cart',          value:cart.map(i=>`${i.name} x${i.qty}`).join(', ')},
-        ]
-      },
-      onClose: function(){
-        btn.disabled = false;
-        btn.innerHTML = '<span>Pay Securely</span><span class="paystack-logo">via PAYSTACK</span>';
-        showToast('!','Payment cancelled','toast-red');
-      },
-      callback: function(response){
-        onPaymentSuccess(response, {first, last, email, phone, addr, city, ref});
-      }
+    
+    const orderRes = await apiFetch('/api/orders', {
+      method: 'POST',
+      body: JSON.stringify(orderPayload),
     });
-    handler.openIframe();
-  } catch(err) {
-    console.error('Paystack setup error:', err);
-    btn.disabled = false;
-    btn.innerHTML = '<span>Pay Securely</span><span class="paystack-logo">via PAYSTACK</span>';
-    showToast('!','Payment error — please try again','toast-red');
+    if (orderRes.ref) ref = orderRes.ref;
+    if (orderRes.paystack_key) paystackKey = orderRes.paystack_key;
+  } catch (err) {
+    console.warn('Order pre-create failed, proceeding with client-side ref:', err.message);
   }
+
+  const totalKobo = Math.round(totalAmount * 100); // Ensures clear integers for Pesewas conversions
+
+  const handler = PaystackPop.setup({
+    key: paystackKey,
+    email: email,
+    amount: totalKobo,
+    currency: 'GHS',
+    ref: ref,
+    firstname: first,
+    lastname: last,
+    phone: phone,
+    metadata: {
+      custom_fields: [
+        {display_name:'Customer Name', variable_name:'customer_name', value:`${first} ${last}`},
+        {display_name:'Delivery Address', variable_name:'address', value:`${addr}, ${city}`},
+        {display_name:'Shipping Method', variable_name:'shipping', value:shippingMethod},
+        {display_name:'Cart Items', variable_name:'cart', value: cart.map(i=>`${i.name} x${i.qty}`).join(', ')},
+      ]
+    },
+    onClose: function(){
+      btn.disabled = false;
+      btn.innerHTML = '<span>Pay Securely</span><span class="paystack-logo">via PAYSTACK</span>';
+      showToast('!','Payment cancelled','toast-red');
+    },
+    callback: function(response){
+      onPaymentSuccess(response, {first, last, email, phone, addr, city, ref});
+    }
+  });
+  handler.openIframe();
 }
 
 
@@ -923,63 +887,7 @@ function switchAdminTab(btn, sectionId){
   document.getElementById(sectionId).classList.add('active');
   if(sectionId==='adminDiscounts') renderDiscounts();
   if(sectionId==='adminContent') loadContentSettings();
-  if(sectionId==='adminSettings') renderShippingMethods();
 }
-
-// ══════════════════════════════════════════════════
-// SHIPPING METHODS — Admin editor (localStorage-backed)
-// ══════════════════════════════════════════════════
-const SHIPPING_DEFAULT = [
-  {id:'standard', name:'Standard',  days:'3–5 business days', price:0,   freeOver:200},
-  {id:'express',  name:'Express',   days:'1–2 business days', price:30,  freeOver:null},
-  {id:'diaspora', name:'Diaspora',  days:'7–14 business days',price:80,  freeOver:null},
-];
-function loadShippingMethods(){
-  try{ return JSON.parse(localStorage.getItem('asanti_shipping')) || SHIPPING_DEFAULT; }
-  catch{ return SHIPPING_DEFAULT; }
-}
-function renderShippingMethods(){
-  const list = document.getElementById('shippingMethodsList');
-  if(!list) return;
-  const methods = loadShippingMethods();
-  list.innerHTML = methods.map(m => `
-    <div class="shipping-row" style="background:rgba(217,164,65,0.04);border:1px solid rgba(217,164,65,0.12);border-radius:8px;padding:12px;display:grid;grid-template-columns:1fr 1fr 1fr 80px 80px 32px;gap:8px;align-items:center">
-      <div><div class="admin-label" style="font-size:0.65rem;margin-bottom:3px">Name</div><input class="admin-input sm-name" value="${m.name}" placeholder="e.g. Standard"></div>
-      <div><div class="admin-label" style="font-size:0.65rem;margin-bottom:3px">ID</div><input class="admin-input sm-id" value="${m.id}" placeholder="e.g. standard"></div>
-      <div><div class="admin-label" style="font-size:0.65rem;margin-bottom:3px">Delivery time</div><input class="admin-input sm-days" value="${m.days}" placeholder="e.g. 3–5 business days"></div>
-      <div><div class="admin-label" style="font-size:0.65rem;margin-bottom:3px">Price (GH₵)</div><input class="admin-input sm-price" type="number" min="0" value="${m.price}"></div>
-      <div><div class="admin-label" style="font-size:0.65rem;margin-bottom:3px">Free over (GH₵)</div><input class="admin-input sm-freeover" type="number" min="0" value="${m.freeOver||''}"></div>
-      <button onclick="this.closest('.shipping-row').remove()" style="background:rgba(220,50,50,0.15);border:1px solid rgba(220,50,50,0.3);border-radius:6px;color:#e05;padding:6px;cursor:pointer">✕</button>
-    </div>`).join('');
-}
-function addShippingMethod(){
-  const list = document.getElementById('shippingMethodsList');
-  if(!list) return;
-  const row = document.createElement('div');
-  row.className = 'shipping-row';
-  row.style.cssText = 'background:rgba(217,164,65,0.04);border:1px solid rgba(217,164,65,0.12);border-radius:8px;padding:12px;display:grid;grid-template-columns:1fr 1fr 1fr 80px 80px 32px;gap:8px;align-items:center';
-  row.innerHTML = `
-    <div><div class="admin-label" style="font-size:0.65rem;margin-bottom:3px">Name</div><input class="admin-input sm-name" placeholder="e.g. Pickup"></div>
-    <div><div class="admin-label" style="font-size:0.65rem;margin-bottom:3px">ID</div><input class="admin-input sm-id" placeholder="e.g. pickup"></div>
-    <div><div class="admin-label" style="font-size:0.65rem;margin-bottom:3px">Delivery time</div><input class="admin-input sm-days" placeholder="e.g. Same day"></div>
-    <div><div class="admin-label" style="font-size:0.65rem;margin-bottom:3px">Price (GH₵)</div><input class="admin-input sm-price" type="number" min="0" value="0"></div>
-    <div><div class="admin-label" style="font-size:0.65rem;margin-bottom:3px">Free over (GH₵)</div><input class="admin-input sm-freeover" type="number" min="0" placeholder=""></div>
-    <button onclick="this.closest('.shipping-row').remove()" style="background:rgba(220,50,50,0.15);border:1px solid rgba(220,50,50,0.3);border-radius:6px;color:#e05;padding:6px;cursor:pointer">✕</button>`;
-  list.appendChild(row);
-}
-function saveShippingMethods(){
-  const rows = document.querySelectorAll('.shipping-row');
-  const methods = Array.from(rows).map(row => ({
-    id:       row.querySelector('.sm-id').value.trim().toLowerCase().replace(/\s+/g,'_'),
-    name:     row.querySelector('.sm-name').value.trim(),
-    days:     row.querySelector('.sm-days').value.trim(),
-    price:    parseFloat(row.querySelector('.sm-price').value)||0,
-    freeOver: row.querySelector('.sm-freeover').value ? parseFloat(row.querySelector('.sm-freeover').value) : null,
-  })).filter(m=>m.name);
-  localStorage.setItem('asanti_shipping', JSON.stringify(methods));
-  showToast('\u2713','Shipping methods saved','toast-green');
-}
-
 function renderAdmin(){
   renderAdminStats();
   renderAdminProducts();
@@ -987,7 +895,6 @@ function renderAdmin(){
   renderAdminAlerts();
   renderLowStock();
   renderDiscounts();
-  renderShippingMethods();
   loadContentSettings();
 }
 
@@ -1396,7 +1303,6 @@ async function handleContactSubmit(){
     showToast('!','Could not send — please email us directly','toast-red');
   }
 }
-
 
 
 
