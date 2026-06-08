@@ -482,7 +482,7 @@ function updateCartUI(){
   if (cartSubtotalEl) cartSubtotalEl.textContent = `GH₵ ${sub.toLocaleString()}`;
   
   const cartShippingEl = document.getElementById('cartShippingDisplay');
-  if (cartShippingEl) cartShippingEl.textContent = actualShipping === 0 ? '50' : `GH₵ ${actualShipping}`;
+  if (cartShippingEl) cartShippingEl.textContent = actualShipping === 0 ? 'GH₵ 50' : `GH₵ ${actualShipping}`;
   
   const cartTotalEl = document.getElementById('cartTotal');
   if (cartTotalEl) cartTotalEl.textContent = `GH₵ ${grandTotal.toLocaleString()}`;
@@ -490,7 +490,7 @@ function updateCartUI(){
   // ── FIX 2: UPDATE CHECKOUT SCREEN SUMMARY ELEMENTS AUTOMATICALLY ──
   const checkoutShippingEl = document.getElementById('coShippingLine');
   if (checkoutShippingEl) {
-    checkoutShippingEl.textContent = actualShipping === 0 ? 'Free' : `GH₵ ${actualShipping}`;
+    checkoutShippingEl.textContent = actualShipping === 0 ? 'GH₵ 50' : `GH₵ ${actualShipping}`;
   }
 
   const checkoutTotalEl = document.getElementById('coTotal');
@@ -526,7 +526,7 @@ function selectShipping(method, cost) {
   // 1. Calculate the correct cost immediately
   if (method === 'standard') {
     shippingCost = sub >= 200 ? 0 : 10;
-    document.getElementById('ship_standard_price').textContent = sub >= 200 ? 'Free' : 'GH₵ 10';
+    document.getElementById('ship_standard_price').textContent = sub >= 200 ? '50' : 'GH₵ 50';
   } else {
     shippingCost = cost;
   }
