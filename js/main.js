@@ -482,7 +482,7 @@ function updateCartUI(){
   if (cartSubtotalEl) cartSubtotalEl.textContent = `GH₵ ${sub.toLocaleString()}`;
   
   const cartShippingEl = document.getElementById('cartShippingDisplay');
-  if (cartShippingEl) cartShippingEl.textContent = actualShipping === 0 ? 'Free' : `GH₵ ${actualShipping}`;
+  if (cartShippingEl) cartShippingEl.textContent = actualShipping === 0 ? '50' : `GH₵ ${actualShipping}`;
   
   const cartTotalEl = document.getElementById('cartTotal');
   if (cartTotalEl) cartTotalEl.textContent = `GH₵ ${grandTotal.toLocaleString()}`;
