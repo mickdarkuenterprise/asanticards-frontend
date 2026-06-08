@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact — ASA NTI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@400;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://js.paystack.co/v1/inline.js"></script>
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+<!-- MOBILE MENU -->
+<div class="mobile-menu" id="mobileMenu">
+  <button class="mobile-close" onclick="closeMobile()">✕</button>
+  <a href="index.html" onclick="closeMobile()">Home</a>
+  <a href="rules.html" onclick="closeMobile()">Game Play</a>
+  <a href="store.html" onclick="closeMobile()">Store</a>
+  <a href="about.html" onclick="closeMobile()">About</a>
+  <a href="contact.html" onclick="closeMobile()">Contact</a>
+</div>
+
+<!-- NAV -->
+<nav id="mainNav">
+  <a class="nav-logo" href="index.html"><img id="nav-logo-img" src="" alt="ASA NTI" style="height:42px;width:auto;object-fit:contain"></a>
+  <ul class="nav-links">
+    <li><a href="index.html" data-page="home">Home</a></li>
+    <li><a href="rules.html" data-page="game">Game Play</a></li>
+    <li><a href="store.html" data-page="store">Store</a></li>
+    <li><a href="about.html" data-page="about">About</a></li>
+    <li><a href="contact.html" data-page="contact" class="active">Contact</a></li>
+  </ul>
+  <div class="nav-social">
+    <a href="https://www.instagram.com/asanticards/" target="_blank" aria-label="Instagram"><svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg></a>
+    <a href="https://web.facebook.com/profile.php?id=61589211744830" target="_blank" aria-label="Facebook"><svg viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg></a>
+    <a href="https://www.tiktok.com/@asanticards" target="_blank" aria-label="TikTok"><svg viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.17 8.17 0 004.78 1.52V6.75a4.86 4.86 0 01-1.01-.06z"/></svg></a>
+    <button class="cart-nav-btn" onclick="openCart()" aria-label="Cart">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+      <span class="cart-badge" id="cartBadge">0</span>
+    </button>
+  </div>
+  <button class="nav-toggle" onclick="openMobile()" aria-label="Menu"><span></span><span></span><span></span></button>
+</nav>
+
+<!-- ═══════════════════════ HOME ═══════════════════════ -->
+<div id="contact" class="page-section">
+  <div class="page-hero" style="background:radial-gradient(ellipse at 50% 0%,rgba(74,28,18,0.25) 0%,transparent 55%),linear-gradient(180deg,#0A0302,#0F0604)">
+    <div class="s-label">Contact</div>
+    <h1 class="s-title hero-size">Get in Touch</h1>
+    <p class="s-body">Questions, orders, stockist enquiries, media requests, or just a hello — we'd love to hear from you.</p>
+  </div>
+
+  <section style="background:linear-gradient(180deg,#0F0604,#130805)">
+    <div class="section-wrap">
+      <div class="contact-grid reveal">
+        <div class="contact-info-col">
+          <div class="s-label">Reach Us</div>
+          <h2 class="s-title">We'd love to<br>hear from you</h2>
+          <div class="deco-line"></div>
+          <p class="s-body">Whether you're a player, stockist, journalist, educator, or cultural collaborator — there's a place for you in the ASA NTI family.</p>
+          <div style="margin-top:2rem">
+            <div class="c-detail"><div class="c-icon"><svg viewBox="0 0 24 24"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div><div><div class="c-detail-label">Email</div><div class="c-detail-val">hello@asanticards.com</div></div></div>
+            <div class="c-detail"><div class="c-icon"><svg viewBox="0 0 24 24"><path d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></div><div><div class="c-detail-label">Location</div><div class="c-detail-val">Accra, Ghana</div></div></div>
+            <div class="c-detail"><div class="c-icon"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div><div><div class="c-detail-label">Enquiry Types</div><div class="c-detail-val">Sales · Media · Events · Education · Wholesale</div></div></div>
+          </div>
+          <div><div class="c-detail-label" style="margin-bottom:12px">Follow Us</div><div class="social-row"><a href="https://www.instagram.com/asanticards/" target="_blank" class="soc-btn" aria-label="Instagram"><svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg></a><a href="https://web.facebook.com/profile.php?id=61589211744830" target="_blank" class="soc-btn" aria-label="Facebook"><svg viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg></a><a href="https://www.tiktok.com/@asanticards" target="_blank" class="soc-btn" aria-label="TikTok"><svg viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.17 8.17 0 004.78 1.52V6.75a4.86 4.86 0 01-1.01-.06z"/></svg></a></div></div>
+        </div>
+        <div>
+          <div class="contact-form-card">
+            <div class="s-label" style="margin-bottom:1rem">Send a Message</div>
+            <div class="form-row">
+              <div class="form-group"><label class="form-label">First Name</label><input type="text" id="cf_first" class="form-input" placeholder="Your first name"></div>
+              <div class="form-group"><label class="form-label">Last Name</label><input type="text" id="cf_last" class="form-input" placeholder="Your last name"></div>
+            </div>
+            <div class="form-group"><label class="form-label">Email</label><input type="email" id="cf_email" class="form-input" placeholder="your@email.com"></div>
+            <div class="form-group"><label class="form-label">Enquiry Type</label>
+              <select class="form-select form-input">
+                <option value="">Select an enquiry type</option>
+                <option>General Question</option>
+                <option>Order Enquiry</option>
+                <option>Wholesale / Stockist</option>
+                <option>Media / Press</option>
+                <option>Event Collaboration</option>
+                <option>Education Programme</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div class="form-group"><label class="form-label">Subject</label><input type="text" class="form-input" placeholder="What's this about?"></div>
+            <div class="form-group"><label class="form-label">Message</label><textarea id="cf_message" class="form-textarea" placeholder="Tell us more — we read every message and aim to reply within 2 business days."></textarea></div>
+            <button class="btn btn-gold" id="cfSendBtn" style="width:100%;padding:15px;font-size:0.8rem;letter-spacing:0.2em" onclick="handleContactSubmit()">Send Message</button>
+            <p style="font-size:0.74rem;color:rgba(233,208,162,0.3);text-align:center;margin-top:12px">We aim to reply within 2 business days.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- FAQ -->
+      <div class="faq-section reveal">
+        <div class="s-label">FAQ</div>
+        <h2 class="s-title">Frequently Asked</h2>
+        <div class="deco-line"></div>
+        <div class="faq-grid">
+          <div class="faq-item"><div class="faq-q">Where can I buy ASA NTI?</div><p class="faq-a">You can buy directly from our online store on this website, or find us at select cultural events and heritage markets in Accra and Kumasi.</p></div>
+          <div class="faq-item"><div class="faq-q">Do you ship internationally?</div><p class="faq-a">Yes — we ship worldwide. Diaspora shipping typically takes 7–14 business days. International shipping costs are calculated at checkout.</p></div>
+          <div class="faq-item"><div class="faq-q">Can I stock ASA NTI in my shop?</div><p class="faq-a">Absolutely. We work with independent retailers, cultural spaces, and gift shops. Get in touch via the form above and select "Wholesale / Stockist".</p></div>
+          <div class="faq-item"><div class="faq-q">Is the game suitable for children?</div><p class="faq-a">ASA NTI is designed for ages 12 and up. Younger players can participate with adult guidance — it's a wonderful way to introduce children to Ghanaian heritage.</p></div>
+          <div class="faq-item"><div class="faq-q">How long does a game take?</div><p class="faq-a">A single round takes 15–30 minutes. A full game (first to 100 points) typically runs 45–90 minutes depending on player count and experience.</p></div>
+          <div class="faq-item"><div class="faq-q">Are expansions planned?</div><p class="faq-a">Yes — an expansion pack is in active development. Sign up for our newsletter or follow @asanticards to be first to know when it launches.</p></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+</div>
+
+<!-- ═══════════════════════ FOOTER ═══════════════════════ -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a class="nav-logo" href="index.html"><img id="nav-logo-img" src="" alt="ASA NTI" style="height:42px;width:auto;object-fit:contain"></a>
+        <p>A premium card game inspired by the visual language and stories of the Asante Kingdom. Proudly designed in Ghana.</p>
+        <div class="footer-social">
+          <a href="https://www.instagram.com/asanticards/" target="_blank" class="footer-soc" aria-label="Instagram"><svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg></a>
+          <a href="https://web.facebook.com/profile.php?id=61589211744830" target="_blank" class="footer-soc" aria-label="Facebook"><svg viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg></a>
+          <a href="https://www.tiktok.com/@asanticards" target="_blank" class="footer-soc" aria-label="TikTok"><svg viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.17 8.17 0 004.78 1.52V6.75a4.86 4.86 0 01-1.01-.06z"/></svg></a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <h4>Navigate</h4>
+        <ul>
+          <li><a href="index.html">Home</a></li>
+          <li><a href="rules.html">Game Play</a></li>
+          <li><a href="store.html">Store</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Game Play</h4>
+        <ul>
+          <li><a href="rules.html">AHENNIE</a></li>
+          <li><a href="rules.html">BAMMƆ</a></li>
+          <li><a href="rules.html">AHABAN ANIWA</a></li>
+          <li><a href="rules.html">Full Rules</a></li>
+          <li><a href="rules.html">What's Next</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <ul>
+          <li><a href="about.html">About</a></li>
+          <li><a href="contact.html">Contact</a></li>
+          <li><a href="https://www.instagram.com/asanticards/" target="_blank">Instagram</a></li>
+          <li><a href="https://web.facebook.com/profile.php?id=61589211744830" target="_blank">Facebook</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2025 ASA NTI Card Game. All rights reserved.</span>
+      <span>Proudly made in Ghana ✦</span>
+    </div>
+  </div>
+</footer>
+
+
+<script src="js/main.js"></script>
+
+<!-- ═══════════ CART DRAWER ═══════════ -->
+<div class="cart-overlay" id="cartOverlay" onclick="closeCart()"></div>
+<div class="cart-drawer" id="cartDrawer">
+  <div class="cart-head">
+    <div class="cart-title">Your Cart</div>
+    <button class="cart-close" onclick="closeCart()"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+  </div>
+  <div class="cart-body" id="cartBody">
+    <div class="cart-empty" id="cartEmpty">
+      <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+      <div>Your cart is empty</div>
+      <div style="font-size:0.75rem;margin-top:6px;opacity:0.6">Add a product to get started</div>
+    </div>
+  </div>
+  <div class="cart-foot" id="cartFoot" style="display:none">
+    <div class="cart-subtotal"><span>Subtotal</span><span id="cartSubtotal">GH₵ 0</span></div>
+    <div class="cart-subtotal"><span>Shipping</span><span id="cartShippingDisplay">Calculated at checkout</span></div>
+    <div class="cart-total-row"><span>Total</span><span id="cartTotal">GH₵ 0</span></div>
+    <button class="cart-checkout-btn" onclick="openCheckout()">Proceed to Checkout →</button>
+    <p style="font-size:0.72rem;color:rgba(233,208,162,0.25);text-align:center;margin-top:10px">Secure payment via Paystack ✦ Free shipping over GH₵ 200</p>
+  </div>
+</div>
+
+<!-- ═══════════ CHECKOUT MODAL ═══════════ -->
+<div class="modal-overlay" id="checkoutOverlay">
+  <div class="checkout-modal" id="checkoutModal">
+    <div class="checkout-head">
+      <div class="checkout-title" id="checkoutModalTitle">Checkout</div>
+      <button class="cart-close" onclick="closeCheckout()"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div id="checkoutContent">
+      <div class="checkout-body">
+        <div class="checkout-grid">
+          <div class="co-section-title">Contact Details</div>
+          <div class="co-field"><label class="co-label">First Name</label><input class="co-input" id="co_first" placeholder="Kwame" autocomplete="given-name"></div>
+          <div class="co-field"><label class="co-label">Last Name</label><input class="co-input" id="co_last" placeholder="Mensah" autocomplete="family-name"></div>
+          <div class="co-field full"><label class="co-label">Email Address</label><input class="co-input" id="co_email" type="email" placeholder="you@email.com" autocomplete="email"></div>
+          <div class="co-field full"><label class="co-label">Phone Number</label><input class="co-input" id="co_phone" type="tel" placeholder="+233 24 000 0000" autocomplete="tel"></div>
+
+          <div class="co-section-title">Delivery Address</div>
+          <div class="co-field full"><label class="co-label">Street Address</label><input class="co-input" id="co_addr" placeholder="123 Independence Ave" autocomplete="street-address"></div>
+          <div class="co-field"><label class="co-label">City</label><input class="co-input" id="co_city" placeholder="Accra" autocomplete="address-level2"></div>
+          <div class="co-field"><label class="co-label">Country</label>
+            <select class="co-input" id="co_country">
+              <option value="GH">Ghana</option>
+              <option value="NG">Nigeria</option>
+              <option value="UK">United Kingdom</option>
+              <option value="US">United States</option>
+              <option value="CA">Canada</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <div class="co-section-title">Shipping Method</div>
+          <div class="shipping-options">
+            <div class="ship-opt selected" id="ship_standard" onclick="selectShipping('standard',0)">
+              <div class="ship-opt-name">Standard</div>
+              <div class="ship-opt-days">3–5 business days</div>
+              <div class="ship-opt-price" id="ship_standard_price">Free</div>
+            </div>
+            <div class="ship-opt" id="ship_express" onclick="selectShipping('express',30)">
+              <div class="ship-opt-name">Express</div>
+              <div class="ship-opt-days">1–2 business days</div>
+              <div class="ship-opt-price">GH₵ 30</div>
+            </div>
+            <div class="ship-opt" id="ship_diaspora" onclick="selectShipping('diaspora',80)">
+              <div class="ship-opt-name">Diaspora</div>
+              <div class="ship-opt-days">7–14 business days</div>
+              <div class="ship-opt-price">GH₵ 80</div>
+            </div>
+          </div>
+
+          <div class="co-section-title">Order Summary</div>
+          <div class="co-order-summary">
+            <div id="coOrderLines"></div>
+            <div class="co-order-line"><span>Shipping</span><span id="coShippingLine">Free</span></div>
+            <div class="co-order-line total"><span>Total</span><span id="coTotal">GH₵ 0</span></div>
+          </div>
+
+          <button class="paystack-btn" id="paystackBtn" onclick="initiatePaystack()">
+            <span>Pay Securely</span>
+            <span class="paystack-logo">via PAYSTACK</span>
+          </button>
+          <p style="grid-column:1/-1;text-align:center;font-size:0.72rem;color:rgba(233,208,162,0.25);margin-top:-6px">256-bit SSL encryption · Your data is always protected</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ ADMIN PANEL ═══════════ -->
+<div id="admin-panel">
+  <div id="adminLoginScreen" class="admin-login">
+    <div class="admin-login-card">
+      <img class="brand-logo-img" src="" alt="ASA NTI" style="height:56px;width:auto;object-fit:contain;margin-bottom:10px">
+      <div style="font-family:'Cinzel',serif;font-size:0.75rem;letter-spacing:0.2em;color:rgba(233,208,162,0.4);text-transform:uppercase;margin-bottom:32px">Admin Dashboard</div>
+      <div class="co-field" style="margin-bottom:16px;text-align:left"><label class="co-label">Password</label><input class="co-input" id="adminPwInput" type="password" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')checkAdminPw()"></div>
+      <button class="btn btn-gold" style="width:100%;padding:13px" onclick="checkAdminPw()">Enter Dashboard</button>
+      <p style="font-size:0.72rem;color:rgba(233,208,162,0.2);margin-top:16px">Demo password: <strong style="color:rgba(217,164,65,0.5)">admin123</strong></p>
+    </div>
+  </div>
+  <div id="adminDashboard" style="display:none">
+    <div class="admin-nav">
+      <div class="admin-logo">ASA NTI <span>Admin</span></div>
+      <div class="admin-nav-tabs admin-tab-bar">
+        <button class="admin-tab active" onclick="switchAdminTab(this,'adminOverview')">Overview</button>
+        <button class="admin-tab" onclick="switchAdminTab(this,'adminProducts')">Products</button>
+        <button class="admin-tab" onclick="switchAdminTab(this,'adminOrders')">Orders</button>
+        <button class="admin-tab" onclick="switchAdminTab(this,'adminContent')">Content</button>
+        <button class="admin-tab" onclick="switchAdminTab(this,'adminDiscounts')">Discounts</button>
+        <button class="admin-tab" onclick="switchAdminTab(this,'adminSettings')">Settings</button>
+      </div>
+      <button class="admin-close" onclick="closeAdmin()">← Back to Site</button>
+    </div>
+    <div class="admin-body">
+
+      <!-- OVERVIEW -->
+      <div class="admin-section active" id="adminOverview">
+        <div id="adminAlerts"></div>
+        <div class="admin-stat-row" id="adminStats"></div>
+        <div class="admin-grid">
+          <div class="admin-card">
+            <div class="admin-card-title">Recent Orders</div>
+            <div id="adminRecentOrders"><div class="admin-empty">No orders yet</div></div>
+          </div>
+          <div class="admin-card">
+            <div class="admin-card-title">Low Stock Alert</div>
+            <div id="adminLowStock"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PRODUCTS -->
+      <div class="admin-section" id="adminProducts">
+        <div class="admin-card">
+          <div class="admin-card-title">
+            Product Catalogue
+            <button onclick="openAddProduct()" style="background:rgba(217,164,65,0.1);border:1px solid rgba(217,164,65,0.25);border-radius:6px;padding:6px 14px;color:var(--gold);font-size:0.72rem;cursor:pointer;font-family:'Inter',sans-serif">+ Add Product</button>
+          </div>
+          <div id="adminProductList"></div>
+        </div>
+        <!-- ADD / EDIT PRODUCT MODAL -->
+        <div id="productModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:800;display:none;align-items:center;justify-content:center;padding:20px">
+          <div style="background:linear-gradient(160deg,#1a0806,#0f0503);border:1px solid rgba(217,164,65,0.25);border-radius:14px;padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+              <div style="font-family:'Cinzel',serif;font-size:1rem;color:var(--gold)" id="productModalTitle">Add Product</div>
+              <button onclick="closeProductModal()" style="background:none;border:none;color:rgba(233,208,162,0.4);font-size:1.2rem;cursor:pointer">✕</button>
+            </div>
+            <!-- Image upload -->
+            <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:18px">
+              <div id="pmImgPreview" onclick="document.getElementById('pmImgFile').click()" style="width:80px;height:80px;border-radius:8px;border:1px dashed rgba(217,164,65,0.3);background:#1a0a04;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;font-size:1.8rem;color:rgba(217,164,65,0.3)">📷</div>
+              <input type="file" id="pmImgFile" accept="image/*" style="display:none" onchange="handleProductImgUpload(event)">
+              <div style="flex:1">
+                <div class="admin-label" style="margin-bottom:6px">Product Image</div>
+                <div style="font-size:0.75rem;color:rgba(233,208,162,0.3);line-height:1.5">Click the square to upload.<br>JPG, PNG or SVG. Shows in store & cart.</div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+              <div class="admin-field" style="grid-column:1/-1"><div class="admin-label">Product Name</div><input class="admin-input" id="pmName" placeholder="e.g. ASA NTI Collector's Edition"></div>
+              <div class="admin-field"><div class="admin-label">Price (GH₵)</div><input class="admin-input" type="number" id="pmPrice" placeholder="120" min="0"></div>
+              <div class="admin-field"><div class="admin-label">Stock</div><input class="admin-input" type="number" id="pmStock" placeholder="50" min="0"></div>
+              <div class="admin-field"><div class="admin-label">Category</div>
+                <select class="admin-select" id="pmCategory">
+                  <option value="game">Card Game</option>
+                  <option value="bundle">Bundle</option>
+                  <option value="merch">Merchandise</option>
+                </select>
+              </div>
+              <div class="admin-field"><div class="admin-label">Badge</div>
+                <select class="admin-select" id="pmBadge">
+                  <option value="">None</option>
+                  <option value="NEW">NEW</option>
+                  <option value="LIMITED">LIMITED</option>
+                  <option value="SAVE 15%">SAVE 15%</option>
+                  <option value="COMING SOON">COMING SOON</option>
+                  <option value="BESTSELLER">BESTSELLER</option>
+                </select>
+              </div>
+              <div class="admin-field" style="grid-column:1/-1"><div class="admin-label">Description</div><textarea class="admin-textarea" id="pmDesc" placeholder="Short product description..."></textarea></div>
+            </div>
+            <input type="hidden" id="pmEditId">
+            <div style="display:flex;gap:10px">
+              <button onclick="saveProductModal()" class="btn btn-gold" style="flex:1;padding:12px">Save Product</button>
+              <button onclick="closeProductModal()" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:12px 20px;color:rgba(233,208,162,0.5);cursor:pointer;font-family:'Cinzel',serif;font-size:0.82rem">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ORDERS -->
+      <div class="admin-section" id="adminOrders">
+        <div class="admin-card">
+          <div class="admin-card-title">
+            All Orders
+            <div style="display:flex;gap:8px">
+              <button onclick="exportOrders()" style="background:rgba(217,164,65,0.1);border:1px solid rgba(217,164,65,0.25);border-radius:6px;padding:6px 14px;color:var(--gold);font-size:0.72rem;cursor:pointer;font-family:'Inter',sans-serif">Export CSV</button>
+              <button onclick="exportCustomerEmails()" style="background:rgba(217,164,65,0.1);border:1px solid rgba(217,164,65,0.25);border-radius:6px;padding:6px 14px;color:var(--gold);font-size:0.72rem;cursor:pointer;font-family:'Inter',sans-serif">Export Emails</button>
+            </div>
+          </div>
+          <div id="adminOrderList"><div class="admin-empty">No orders yet</div></div>
+        </div>
+      </div>
+
+      <!-- CONTENT -->
+      <div class="admin-section" id="adminContent">
+        <div class="admin-card" style="margin-bottom:16px">
+          <div class="admin-card-title">Announcement Banner</div>
+          <div class="banner-card">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+              <div class="toggle-switch" onclick="toggleBanner()">
+                <div class="toggle-track" id="bannerToggle"><div class="toggle-thumb"></div></div>
+                <span class="toggle-label" id="bannerToggleLabel">Banner Off</span>
+              </div>
+            </div>
+            <div class="admin-field" style="margin-bottom:10px">
+              <div class="admin-label">Banner Text</div>
+              <input class="admin-input" id="bannerText" placeholder="e.g. 🎉 Free shipping this weekend on all orders!" oninput="updateBannerPreview()">
+            </div>
+            <div class="admin-label" style="margin-bottom:6px">Preview</div>
+            <div class="banner-preview" id="bannerPreview">Banner preview will appear here</div>
+            <button onclick="saveBanner()" class="btn-save-sm" style="margin-top:8px">Save Banner</button>
+          </div>
+        </div>
+        <div class="admin-card">
+          <div class="admin-card-title">Hero Stats</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+            <div class="admin-field"><div class="admin-label">Suits</div><input class="admin-input" id="statSuits" type="number" value="3"></div>
+            <div class="admin-field"><div class="admin-label">Cards</div><input class="admin-input" id="statCards" type="number" value="48"></div>
+            <div class="admin-field"><div class="admin-label">Players</div><input class="admin-input" id="statPlayers" value="2–4"></div>
+            <div class="admin-field"><div class="admin-label">Ages</div><input class="admin-input" id="statAges" value="12+"></div>
+          </div>
+          <button onclick="saveHeroStats()" class="btn-save-sm">Save Stats</button>
+        </div>
+      </div>
+
+      <!-- DISCOUNTS -->
+      <div class="admin-section" id="adminDiscounts">
+        <div class="admin-card">
+          <div class="admin-card-title">Discount Codes</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end;margin-bottom:20px">
+            <div class="admin-field"><div class="admin-label">Code</div><input class="admin-input" id="dcCode" placeholder="GHANA20" style="text-transform:uppercase"></div>
+            <div class="admin-field"><div class="admin-label">Type</div>
+              <select class="admin-select" id="dcType">
+                <option value="percent">% Off</option>
+                <option value="fixed">GH₵ Off</option>
+              </select>
+            </div>
+            <div class="admin-field"><div class="admin-label">Value</div><input class="admin-input" type="number" id="dcValue" placeholder="20" min="1"></div>
+            <button onclick="addDiscount()" class="btn-save-sm" style="height:36px">Add</button>
+          </div>
+          <div id="discountList"><div class="admin-empty">No discount codes yet</div></div>
+        </div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div class="admin-section" id="adminSettings">
+        <div class="admin-card" style="margin-bottom:16px">
+          <div class="admin-card-title">Change Password</div>
+          <div class="settings-grid" style="margin-bottom:14px">
+            <div class="admin-field"><div class="admin-label">Current Password</div><input class="admin-input" type="password" id="pwCurrent" placeholder="Current password"></div>
+            <div class="admin-field"><div class="admin-label">New Password</div><input class="admin-input" type="password" id="pwNew" placeholder="New password"></div>
+            <div class="admin-field"><div class="admin-label">Confirm Password</div><input class="admin-input" type="password" id="pwConfirm" placeholder="Confirm new password"></div>
+          </div>
+          <button onclick="changeAdminPassword()" class="btn-save-sm">Update Password</button>
+        </div>
+        <div class="admin-card">
+          <div class="admin-card-title">Data Management</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+            <button onclick="exportOrders()" class="btn-save-sm">Export Orders CSV</button>
+            <button onclick="exportCustomerEmails()" class="btn-save-sm">Export Customer Emails</button>
+            <button onclick="resetProducts()" class="btn-del-sm">Reset Products to Default</button>
+            <button onclick="clearOrders()" class="btn-del-sm">Clear All Orders</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ TOAST CONTAINER ═══════════ -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+</body>
