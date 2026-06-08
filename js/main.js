@@ -599,25 +599,36 @@ async function fetchShippingTiersFromAPI() {
 
 
 
+// Replace your old version of updateCheckoutSummary with this one:
 function updateCheckoutSummary(){
   const lines = document.getElementById('coOrderLines');
   if(!lines) return;
   let html = '';
   cart.forEach(item => {
-  const qty = item.qty || item.quantity || 1;
-  html += `
-    <div class="co-order-line">
-      <span>${item.name} × ${qty}</span>
-      <span>GH₵ ${(item.price * qty).toLocaleString()}</span>
-    </div>
-  `;
+    const qty = item.qty || item.quantity || 1;
+    html += `
+      <div class="co-order-line">
+        <span>${item.name} × ${qty}</span>
+        <span>GH₵ ${(item.price * qty).toLocaleString()}</span>
+      </div>
+    `;
   });
   lines.innerHTML = html;
-  document.getElementById('coShippingLine').textContent = shippingCost===0 ? 'Free' : `GH₵ ${shippingCost}`;
-  const total = cartSubtotal() + shippingCost;
-  document.getElementById('coTotal').textContent = `GH₵ ${total.toLocaleString()}`;
+  
+  // Use selectedShippingCost instead of a static shippingCost variable
+  const shippingLine = document.getElementById('coShippingLine');
+  if (shippingLine) {
+    shippingLine.textContent = selectedShippingCost === 0 ? 'Free' : `GH₵ ${selectedShippingCost}`;
+  }
+  
+  const total = cartSubtotal() + selectedShippingCost;
+  const totalLine = document.getElementById('coTotal');
+  if (totalLine) {
+    totalLine.textContent = `GH₵ ${total.toLocaleString()}`;
+  }
 }
 
+// Replace your old version of openCheckout with this one:
 function openCheckout(){
   if(cart.length===0){ showToast('!','Your cart is empty','toast-red'); return; }
   closeCart();
@@ -626,8 +637,12 @@ function openCheckout(){
   document.getElementById('checkoutOverlay').classList.add('open');
   document.getElementById('checkoutModalTitle').textContent = 'Checkout';
   document.body.style.overflow='hidden';
+
+  // CRITICAL STEP: Fire off the backend fetch immediately after layout renders
+  fetchAndRenderShipping();
 }
 
+// Replace your old version of getCheckoutFormHTML with this clean, dynamic framework:
 function getCheckoutFormHTML(){
   return `<div class="checkout-body">
     <div class="checkout-grid">
@@ -644,19 +659,28 @@ function getCheckoutFormHTML(){
           <option value="GH">Ghana</option><option value="NG">Nigeria</option><option value="UK">United Kingdom</option><option value="US">United States</option><option value="CA">Canada</option><option value="other">Other</option>
         </select>
       </div>
+      
+      <!-- FIXED ELEMENT: The dynamic loading container placeholder -->
       <div class="co-section-title">Shipping Method</div>
-      <div class="shipping-options">
-        <div class="ship-opt selected" id="ship_standard" onclick="selectShipping('standard',0)"><div class="ship-opt-name">Standard</div><div class="ship-opt-days">3–5 business days</div><div class="ship-opt-price" id="ship_standard_price">${cartSubtotal()>=200?'Free':'GH₵ 10'}</div></div>
-        <div class="ship-opt" id="ship_express" onclick="selectShipping('express',30)"><div class="ship-opt-name">Express</div><div class="ship-opt-days">1–2 business days</div><div class="ship-opt-price">GH₵ 30</div></div>
-        <div class="ship-opt" id="ship_diaspora" onclick="selectShipping('diaspora',80)"><div class="ship-opt-name">Diaspora</div><div class="ship-opt-days">7–14 business days</div><div class="ship-opt-price">GH₵ 80</div></div>
+      <div id="dynamicShippingOptions" class="shipping-options">
+        <div class="ship-loading" style="color: #888; font-style: italic; padding: 10px;">
+          Loading shipping options...
+        </div>
       </div>
+      
       <div class="co-section-title">Order Summary</div>
-      <div class="co-order-summary"><div id="coOrderLines"></div><div class="co-order-line"><span>Shipping</span><span id="coShippingLine">GH₵ 50</span></div><div class="co-order-line total"><span>Total</span><span id="coTotal">GH₵ 0</span></div></div>
+      <div class="co-order-summary">
+        <div id="coOrderLines"></div>
+        <div class="co-order-line"><span>Shipping</span><span id="coShippingLine">Loading...</span></div>
+        <div class="co-order-line total"><span>Total</span><span id="coTotal">GH₵ 0</span></div>
+      </div>
       <button class="paystack-btn" id="paystackBtn" onclick="initiatePaystack()"><span>Pay Securely</span><span class="paystack-logo">via PAYSTACK</span></button>
       <p style="grid-column:1/-1;text-align:center;font-size:0.72rem;color:rgba(233,208,162,0.25);margin-top:-6px">256-bit SSL encryption · Your data is always protected</p>
     </div>
   </div>`;
 }
+
+// Keep your closeCheckout() function exactly as it is now.
 
 function closeCheckout(){
   // 1. Hide the modal overlay using your existing structure
@@ -1304,6 +1328,74 @@ async function handleContactSubmit(){
   }
 }
 
+// ==========================================
+// BACKEND ROUTE HANDLING ENGINE
+// ==========================================
+
+let selectedShippingCost = 0;
+
+async function fetchAndRenderShipping() {
+  const container = document.getElementById('dynamicShippingOptions');
+  if (!container) return;
+
+  const backendUrl = "https://railway.app";
+
+  try {
+    const response = await fetch(backendUrl);
+    if (!response.ok) throw new Error("Failed to load options");
+    
+    const methods = await response.json(); 
+    container.innerHTML = ""; // Wipe loading text clear
+
+    // Set 'standard' delivery tier to serve as fallback default selection
+    let defaultMethod = methods.find(m => m.id === 'standard') || methods[0];
+
+    methods.forEach((method) => {
+      let numericalPrice = parseFloat(method.price);
+      
+      // Enforce your Free shipping threshold on orders GH₵ 200+
+      if (method.id === 'standard' && typeof cartSubtotal === 'function' && cartSubtotal() >= 200) {
+        numericalPrice = 0;
+      }
+
+      const priceDisplay = numericalPrice === 0 ? "Free" : `GH₵ ${numericalPrice}`;
+      const isSelected = method.id === defaultMethod.id;
+      const cssClass = isSelected ? "ship-opt selected" : "ship-opt";
+      
+      if (isSelected) {
+        selectedShippingCost = numericalPrice;
+      }
+
+      container.innerHTML += `
+        <div class="${cssClass}" id="ship_${method.id}" onclick="selectShipping('${method.id}', ${numericalPrice})">
+          <div class="ship-opt-name">${method.name}</div>
+          <div class="ship-opt-days">${method.delivery_time}</div>
+          <div class="ship-opt-price">${priceDisplay}</div>
+        </div>
+      `;
+    });
+
+    // Refresh totals with the fallback selected choice 
+    updateCheckoutSummary();
+
+  } catch (error) {
+    console.error("Shipping UI error:", error);
+    container.innerHTML = `<div class="ship-error" style="color: #ff6b6b; padding: 10px;">Unable to fetch network delivery rates.</div>`;
+  }
+}
+
+function selectShipping(methodId, price) {
+  // Clear highlighting from all options
+  document.querySelectorAll('.ship-opt').forEach(opt => opt.classList.remove('selected'));
+  
+  // Highlight the selected one
+  const target = document.getElementById(`ship_${methodId}`);
+  if (target) target.classList.add('selected');
+
+  // Propagate price adjustments through calculation matrix
+  selectedShippingCost = price;
+  updateCheckoutSummary();
+}
 
 
 // Secret admin access: type "admin" anywhere
