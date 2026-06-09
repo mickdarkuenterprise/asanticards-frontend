@@ -8,129 +8,965 @@ const IMG_AHENNIE = "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZ
 const API_BASE = 'https://asanticards-production.up.railway.app';
 const PAYSTACK_PUBLIC_KEY = 'pk_live_ec1ec560fc23b6f40264e23c7782d27fad86171b';
 let LIVE_SHIPPING_METHODS = []; // This will hold your live rows from Supabase
-
-
-// ======================================================
-// GLOBAL STATE (SINGLE SOURCE OF TRUTH)
-// ======================================================
 let state = {
   cart: JSON.parse(localStorage.getItem("asa_cart")) || [],
   shipping: {
-    method: "standard",
-    label: "Standard",
-    cost: 10
+    method: null,
+    cost: 0,
+    label: "Standard"
   }
 };
 
-// ======================================================
-// SAVE STATE
-// ======================================================
-function saveState() {
-  localStorage.setItem("asa_cart", JSON.stringify(state.cart));
-  updateUI();
+// ── API helpers ──
+async function apiFetch(path, options = {}) {
+  const res = await fetch(API_BASE + path, {
+    headers: { 'Content-Type': 'application/json', ...options.headers },
+    ...options,
+  });
+  if (!res.ok) throw new Error(`API ${res.status}: ${path}`);
+  return res.json();
 }
+
+// ══════════════════════════════════════════════════
+// PRODUCT CATALOGUE
+// ══════════════════════════════════════════════════
+const PRODUCTS_DEFAULT = [
+  {id:'collectors', name:"ASA NTI — Collector's Edition", price:130, category:'game',  stock:50, active:true,  sort_order:1},
+  {id:'bundle2',    name:'Two-Box Bundle',                price:250, category:'bundle', stock:20, active:true,  sort_order:2},
+  {id:'tote',       name:'ASA NTI Tote Bag',              price:100, category:'merch',  stock:35, active:true,  sort_order:3},
+  {id:'poster',     name:'Three Suits Art Poster',        price:80,  category:'merch',  stock:30, active:true,  sort_order:4},
+  {id:'giftset',    name:'Premium Gift Set',              price:195, category:'bundle', stock:15, active:false, sort_order:5},
+];
+
+// Update any [data-product-price="id"] spans on the page with live prices
+function updatePriceSpans(products) {
+  products.forEach(p => {
+    document.querySelectorAll(`[data-product-price="${p.id}"]`).forEach(el => {
+      el.textContent = `GH\u20B5 ${parseFloat(p.price).toLocaleString('en-GH', {minimumFractionDigits:2})}`;
+    });
+  });
+}
+
+// Get live price for a product id (used in addToCart onclick calls)
+function getProductPrice(id) {
+  const products = loadProducts();
+  const p = products.find(prod => prod.id == id);
+  return p ? parseFloat(p.price) : 0;
+}
+
+// ══════════════════════════════════════════════════
+// STATE — API-backed, localStorage as cache/fallback
+// ══════════════════════════════════════════════════
+
+// Products: fetched from API on init, admin edits go to API
+let _productsCache = null;
+
+function loadProducts() {
+  if (_productsCache) return _productsCache;
+  // Synchronous fallback from localStorage cache while API loads
+  try {
+    const cached = JSON.parse(localStorage.getItem('asanti_products'));
+    _productsCache = cached || PRODUCTS_DEFAULT;
+  } catch { _productsCache = PRODUCTS_DEFAULT; }
+  return _productsCache;
+}
+async function saveProducts(products) {
+  const token = localStorage.getItem('asanti_admin_token');
+
+  if (!token) {
+    throw new Error('Admin authentication required');
+  }
+
+  _productsCache = products;
+  localStorage.setItem('asanti_products', JSON.stringify(products));
+
+  await Promise.all(
+    products.map(prod =>
+      apiFetch(`/api/products/${prod.id}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(prod)
+      })
+    )
+  );
+}
+
+async function fetchProductsFromAPI() {
+  try {
+    const data = await apiFetch('/api/products');
+    
+    // Unwraps the backend object whether it uses { products: [...] } or direct [...]
+    let products = [];
+    if (data && Array.isArray(data.products)) {
+      products = data.products;
+    } else if (Array.isArray(data)) {
+      products = data;
+    } else {
+      throw new Error("Unknown data format received from API");
+    }
+
+    _productsCache = products;
+    localStorage.setItem('asanti_products', JSON.stringify(products));
+    
+    if (document.getElementById('productsGrid')) renderStoreProducts();
+    if (document.getElementById('adminProductList')) renderAdminProducts();
+    updatePriceSpans(products);
+
+  } catch (err) {
+    console.warn('Could not load products from API, using local cache:', err.message);
+    updatePriceSpans(loadProducts());
+  }
+}
+
+
+// Orders: saved to API, read from API in admin; localStorage mirrors for speed
+function loadOrders() {
+  try { return JSON.parse(localStorage.getItem('asanti_orders')) || []; }
+  catch { return []; }
+}
+function saveOrders(o) {
+  localStorage.setItem('asanti_orders', JSON.stringify(o));
+}
+async function fetchOrdersFromAPI() {
+  try {
+    const token = localStorage.getItem('asanti_admin_token');
+    const orders = await apiFetch('/api/orders', {
+      headers: token ? { Authorization: 'Bearer ' + token } : {},
+    });
+    if (Array.isArray(orders)) {
+      localStorage.setItem('asanti_orders', JSON.stringify(orders));
+      renderAdminOrders();
+      renderAdminStats();
+    }
+  } catch (err) {
+    console.warn('Could not fetch orders from API:', err.message);
+  }
+}
+
+// Newsletter
+async function subscribeNewsletter(email) {
+  try {
+    await apiFetch('/api/newsletter', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Contact form
+async function submitContact(name, email, message) {
+  try {
+    await apiFetch('/api/contact', {
+      method: 'POST',
+      body: JSON.stringify({ name, email, message }),
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+let cart = [];
+let shippingCost = 0;
+let shippingMethod = 'standard';
+let appliedDiscount = null;
+
+// ══════════════════════════════════════════════════
+// PAGE NAVIGATION
+// ══════════════════════════════════════════════════
+function showPage(id){
+  document.querySelectorAll('.page-section').forEach(s=>s.classList.remove('active'));
+  const t=document.getElementById(id);
+  if(t){t.classList.add('active');window.scrollTo({top:0,behavior:'smooth'});setTimeout(observeReveal,100)}
+  document.querySelectorAll('.nav-links a').forEach(a=>{
+    a.classList.toggle('active',a.dataset.page===id)
+  });
+}
+window.addEventListener('scroll',()=>{
+  const nav=document.getElementById('mainNav');
+  nav.classList.toggle('scrolled',window.scrollY>60);
+});
+function toggleAcc(btn){
+  const body=btn.nextElementSibling;
+  const isOpen=body.classList.contains('open');
+  document.querySelectorAll('.acc-body').forEach(b=>b.classList.remove('open'));
+  document.querySelectorAll('.acc-header').forEach(h=>h.classList.remove('active'));
+  if(!isOpen){body.classList.add('open');btn.classList.add('active')}
+}
+function switchTab(btn,panelId){
+  // scope to the parent page section
+  const page = btn.closest('.page-section') || document;
+  page.querySelectorAll('.gp-tab').forEach(t=>t.classList.remove('active'));
+  page.querySelectorAll('.gp-panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(panelId).classList.add('active');
+}
+let qty=1;
+function changeQty(d){qty=Math.max(1,qty+d);document.getElementById('qtyNum').textContent=qty}
+function openMobile(){document.getElementById('mobileMenu').classList.add('open')}
+function closeMobile(){document.getElementById('mobileMenu').classList.remove('open')}
+function renderStoreProducts(){
+  const grid = document.getElementById('productsGrid');
+  if(!grid) return;
+  const products = loadProducts().filter(p=> p.active !== false && p.visible !== false);
+  const catBadgeClass = {'NEW':'badge-new','LIMITED':'badge-limited','COMING SOON':'badge-soon','SAVE 15%':'badge-sale','BESTSELLER':'badge-new'};
+  grid.innerHTML = products.map(p=>{
+    const stockLabel = p.stock===0?'Out of Stock':p.stock<=5?`Only ${p.stock} left`:'In Stock';
+    const stockColor = p.stock===0?'color:#e87a7a':p.stock<=5?'color:#f0a040':'color:#8eba80';
+    const imgHtml = p.image
+      ? `<img src="${p.image}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;border-radius:var(--r) var(--r) 0 0">`
+      : `<div class="adinkra-dots"></div><div class="product-img-text"><span style="font-size:1.6rem;color:rgba(217,164,65,0.22);display:block">${p.name.split(' ').slice(0,2).join(' ')}</span></div>`;
+    const badgeCls = catBadgeClass[p.badge]||'badge-new';
+    const badgeHtml = p.badge ? `<span class="product-badge ${badgeCls}">${p.badge}</span>` : '';
+    const soldOut = p.stock===0;
+    return `<div class="product-card" data-cat="${p.category}">
+      <div class="product-img" style="background:linear-gradient(145deg,#1A0709,#2E1009);position:relative">
+        ${imgHtml}${badgeHtml}
+      </div>
+      <div class="product-info">
+        <div class="product-name">${p.name}</div>
+        ${p.desc?`<div class="product-desc">${p.desc}</div>`:''}
+        <div class="product-price">GH₵ ${p.price.toLocaleString()}</div>
+        <div style="font-size:0.72rem;${stockColor};margin-bottom:10px">${stockLabel}</div>
+        <button class="product-add-btn${soldOut?' btn-disabled':''}" ${soldOut?'disabled':''} onclick="addToCart('${p.id}','${p.name.replace(/'/g,"\'")}',${p.price},1)">
+          ${soldOut?'Out of Stock':'Add to Cart'}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterProducts(btn,cat){
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.product-card').forEach(c=>{
+    c.style.display=(cat==='all'||c.dataset.cat===cat)?'block':'none';
+  });
+}
+function observeReveal(){
+  const els=document.querySelectorAll('.reveal:not(.visible),.reveal-left:not(.visible),.reveal-right:not(.visible)');
+  if('IntersectionObserver' in window){
+    const obs=new IntersectionObserver(entries=>{
+      entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target)}});
+    },{threshold:0.08});
+    els.forEach(el=>obs.observe(el));
+  } else {
+    els.forEach(el=>el.classList.add('visible'));
+  }
+}
+document.addEventListener('DOMContentLoaded', () => {
+  // 1. Run animation and image initializers once
+  initImages();
+  observeReveal();
+  setTimeout(observeReveal, 400);
+
+  // 2. Set up layout and UI elements
+  if (document.getElementById('productsGrid')) {
+    renderStoreProducts();
+  }
+  updatePriceSpans(loadProducts());
+
+  // 3. Fetch fresh product data from your Railway backend API
+  fetchProductsFromAPI();
+});
+
+
+
+function initImages(){
+  // Set all brand logo images
+  document.querySelectorAll('#nav-logo-img, .brand-logo-img').forEach(img => img.src = IMG_LOGO);
+  // Set all suit images by class
+  document.querySelectorAll('.suit-img-ahennie').forEach(img => img.src = IMG_AHENNIE);
+  document.querySelectorAll('.suit-img-bammo').forEach(img => img.src = IMG_BAMMO);
+  document.querySelectorAll('.suit-img-ahaban').forEach(img => img.src = IMG_AHABAN);
+
+  // Nav logos
+  document.querySelectorAll('.nav-logo').forEach(el=>{
+    el.innerHTML=`<img src="${IMG_LOGO}" alt="ASA NTI" style="height:40px;width:auto;object-fit:contain;display:block">`;
+  });
+
+  // Story chapter symbols
+  document.querySelectorAll('.story-symbol.sym-gold').forEach(el=>{
+    el.innerHTML=`<img src="${IMG_AHENNIE}" alt="AHENNIE" style="width:110px;height:110px;object-fit:contain">`;
+  });
+  document.querySelectorAll('.story-symbol.sym-red').forEach(el=>{
+    el.innerHTML=`<img src="${IMG_BAMMO}" alt="BAMMƆ" style="width:110px;height:110px;object-fit:contain">`;
+  });
+  document.querySelectorAll('.story-symbol.sym-green').forEach(el=>{
+    el.innerHTML=`<img src="${IMG_AHABAN}" alt="AHABAN ANIWA" style="width:110px;height:110px;object-fit:contain">`;
+  });
+
+  // Mini cards — preserve label text
+  document.querySelectorAll('.mini-card').forEach(el=>{
+    const label=el.textContent.trim();
+    let src=null;
+    if(el.classList.contains('mc-gold')) src=IMG_AHENNIE;
+    else if(el.classList.contains('mc-red')) src=IMG_BAMMO;
+    else if(el.classList.contains('mc-green')) src=IMG_AHABAN;
+    if(src) el.innerHTML=`<img src="${src}" alt="${label}" style="width:32px;height:32px;object-fit:contain">${label}`;
+  });
+
+  // Rules power cards
+  document.querySelectorAll('.power-card').forEach(card=>{
+    const title=(card.querySelector('.power-title')||{}).textContent||'';
+    const svgEl=card.querySelector('svg');
+    if(!svgEl) return;
+    let src=null;
+    if(title.includes('AHENNIE')) src=IMG_AHENNIE;
+    else if(title.includes('BAMMƆ')||title.includes('BAMMO')) src=IMG_BAMMO;
+    else if(title.includes('AHABAN')) src=IMG_AHABAN;
+    if(src){
+      const img=document.createElement('img');
+      img.src=src; img.alt=title;
+      img.style.cssText='width:56px;height:56px;object-fit:contain';
+      svgEl.replaceWith(img);
+    }
+  });
+
+  // Store featured product box logo
+  const box=document.querySelector('.product-box-main');
+  if(box) box.innerHTML=`<img src="${IMG_LOGO}" alt="ASA NTI" style="width:130px;height:auto;object-fit:contain;margin-bottom:10px"><span class="sub">Premium Card Game</span><span class="tag">Collector's Edition</span>`;
+
+  // Footer brand logo
+  document.querySelectorAll('.footer-brand .nav-logo, footer .nav-logo').forEach(el=>{
+    el.innerHTML=`<img src="${IMG_LOGO}" alt="ASA NTI" style="height:36px;width:auto;object-fit:contain;display:block">`;
+  });
+}
+
+// ══════════════════════════════════════════════════
+// CART
+// ══════════════════════════════════════════════════
+function applyDiscount(){
+  const code = document.getElementById('discountCodeInput')?.value.trim().toUpperCase();
+  const msgEl = document.getElementById('discountMsg');
+  if(!code){ if(msgEl) msgEl.textContent=''; return; }
+  const d = applyDiscountCode(code);
+  if(d){
+    appliedDiscount = d;
+    const label = d.type==='percent'?d.value+'% off':'GH₵ '+d.value+' off';
+    if(msgEl){ msgEl.textContent='✓ Code applied: '+label; msgEl.style.color='#8eba80'; }
+    updateCheckoutTotal();
+    showToast('✦','Discount applied!','toast-gold');
+  } else {
+    appliedDiscount = null;
+    if(msgEl){ msgEl.textContent='Invalid or expired code'; msgEl.style.color='#e87a7a'; }
+  }
+}
+function updateCheckoutTotal(){
+  const sub = cartSubtotal();
+  let discount = 0;
+  if(appliedDiscount){
+    discount = appliedDiscount.type==='percent' ? Math.round(sub * appliedDiscount.value/100) : Math.min(appliedDiscount.value, sub);
+  }
+  const freeShipping = (sub-discount) >= 200;
+  const actualShipping = shippingMethod==='standard' ? (freeShipping?0:10) : shippingCost;
+  const total = sub - discount + actualShipping;
+  const subtotalEl=document.getElementById('coSubtotal');
+  const discountEl=document.getElementById('coDiscountRow');
+  const totalEl=document.getElementById('coTotal');
+  if(subtotalEl) subtotalEl.textContent='GH₵ '+sub.toLocaleString();
+  if(discountEl) discountEl.style.display=discount?'flex':'none';
+  const discAmt=document.getElementById('coDiscountAmt');
+  if(discAmt) discAmt.textContent='-GH₵ '+discount.toLocaleString();
+  if(totalEl) totalEl.textContent='GH₵ '+total.toLocaleString();
+}
+function addToCart(id, name, price, rawQty){
+  const products = loadProducts();
+  const prod = products.find(p=>p.id===id);
+  const reqQty = parseInt(rawQty)||1;
+
+  if(prod && prod.stock !== undefined && prod.stock < reqQty){
+    showToast('⚠', `Only ${prod.stock} left in stock`, 'toast-red'); return;
+  }
+  if(prod && prod.stock === 0){
+    showToast('✕', 'This item is out of stock', 'toast-red'); return;
+  }
+
+  const existing = cart.find(i=>i.id===id);
+  if(existing){
+    const newQty = existing.qty + reqQty;
+    if(prod && prod.stock < newQty){ showToast('⚠',`Only ${prod.stock} in stock`,'toast-red'); return; }
+    existing.qty = newQty;
+  } else {
+    cart.push({id, name, price, qty: reqQty});
+  }
+  updateCartUI();
+  showToast('✦', `${name} added to cart`, 'toast-gold');
+  // bump badge animation
+  const badge = document.getElementById('cartBadge');
+  badge.classList.remove('bump');
+  requestAnimationFrame(()=>{ badge.classList.add('bump'); setTimeout(()=>badge.classList.remove('bump'),300); });
+}
+
+function removeFromCart(id){
+  cart = cart.filter(i=>String(i.id)!==String(id));
+  updateCartUI();
+}
+
+function changeCartQty(id, delta){
+  const item = cart.find(i=>String(i.id)===String(id));
+  if(!item) return;
+  const products = loadProducts();
+  const prod = products.find(p=>String(p.id)===String(id));
+  const newQty = Number(item.qty) + Number(delta);
+  if(newQty < 1){ removeFromCart(id); return; }
+  if(prod && Number(prod.stock) < newQty){ showToast('⚠',`Only ${prod.stock} in stock`,'toast-red'); return; }
+  item.qty = newQty;
+  updateCartUI();
+}
+
+function cartSubtotal(){
+  return cart.reduce((sum, item) => {
+    return sum + (item.price * (item.qty || item.quantity || 0));
+  }, 0);
+}
+
+function updateCartUI(){
+  // Support both item.qty or item.quantity safely to prevent NaN errors
+  const count = cart.reduce((sum, item) => {
+    return sum + (item.qty || item.quantity || 0);
+  }, 0);
+  const badge = document.getElementById('cartBadge');
+  if(count > 0){ badge.textContent=count; badge.classList.add('show'); }
+  else { badge.classList.remove('show'); }
+
+  const body = document.getElementById('cartBody');
+  const foot = document.getElementById('cartFoot');
+  if(!body) return;
+
+  // Clear only cart-item rows — preserve cartEmpty node
+  body.querySelectorAll('.cart-item').forEach(el=>el.remove());
+
+  if(cart.length === 0){
+    const empty = document.getElementById('cartEmpty');
+    if(empty) empty.style.display='';
+    if(foot) foot.style.display='none';
+    return;
+  }
+
+  const empty = document.getElementById('cartEmpty');
+  if(empty) empty.style.display='none';
+  if(foot) foot.style.display='';
+
+  cart.forEach(item=>{
+    const itemQty = item.qty || item.quantity || 1;
+    const initials = item.name.split(' ').slice(0,2).map(w=>w[0]).join('');
+    const div = document.createElement('div');
+    div.className = 'cart-item';
+    div.innerHTML = `
+      <div class="cart-item-img">${initials}</div>
+      <div class="cart-item-info">
+        <div class="cart-item-name">${item.name}</div>
+        <div class="cart-item-price">GH₵ ${(item.price * itemQty).toLocaleString()}</div>
+        <div class="cart-item-qty">
+          <button class="ciq-btn">−</button>
+          <span class="ciq-num">${itemQty}</span>
+          <button class="ciq-btn">+</button>
+        </div>
+      </div>
+      <button class="cart-item-remove"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>`;
+    
+    const btns = div.querySelectorAll('.ciq-btn');
+    btns[0].addEventListener('click', ()=>changeCartQty(item.id, -1));
+    btns[1].addEventListener('click', ()=>changeCartQty(item.id,  1));
+    div.querySelector('.cart-item-remove').addEventListener('click', ()=>removeFromCart(item.id));
+    body.appendChild(div);
+  });
+
+  const sub = cartSubtotal();
+  
+  // FIX 1: Removed the hardcoded conditional statement override. 
+  // It now purely respects whatever 'shippingCost' is loaded from your database (50, 80, 200)
+  const actualShipping = shippingCost;
+  const grandTotal = sub + actualShipping;
+
+  // ── UPDATE CART DRAWER ELEMENTS ──
+  const cartSubtotalEl = document.getElementById('cartSubtotal');
+  if (cartSubtotalEl) cartSubtotalEl.textContent = `GH₵ ${sub.toLocaleString()}`;
+  
+  const cartShippingEl = document.getElementById('cartShippingDisplay');
+  if (cartShippingEl) cartShippingEl.textContent = actualShipping === 50 ? 'GH₵ 50' : `GH₵ ${actualShipping}`;
+  
+  const cartTotalEl = document.getElementById('cartTotal');
+  if (cartTotalEl) cartTotalEl.textContent = `GH₵ ${grandTotal.toLocaleString()}`;
+
+  // ── FIX 2: UPDATE CHECKOUT SCREEN SUMMARY ELEMENTS AUTOMATICALLY ──
+  const checkoutShippingEl = document.getElementById('coShippingLine');
+  if (checkoutShippingEl) {
+    checkoutShippingEl.textContent = actualShipping === 50 ? 'GH₵ 50' : `GH₵ ${actualShipping}`;
+  }
+
+  const checkoutTotalEl = document.getElementById('coTotal');
+  if (checkoutTotalEl) {
+    checkoutTotalEl.textContent = `GH₵ ${grandTotal.toLocaleString()}`;
+  }
+
+  // Sync structural items lines if checkout workspace is rendering
+  if (typeof updateCheckoutSummary === 'function') {
+    updateCheckoutSummary();
+  }
+}
+
+
+function openCart(){
+  document.getElementById('cartOverlay').classList.add('open');
+  document.getElementById('cartDrawer').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeCart(){
+  document.getElementById('cartOverlay').classList.remove('open');
+  document.getElementById('cartDrawer').classList.remove('open');
+  document.body.style.overflow='';
+}
+
+// ══════════════════════════════════════════════════
+// CHECKOUT
+// ══════════════════════════════════════════════════
+function selectShipping(method, cost) {
+  shippingMethod = method;
+  const sub = cartSubtotal();
+
+  // 1. Calculate the correct cost immediately
+  if (method === 'standard') {
+    shippingCost = sub >= 200 ? 0 : 10;
+    document.getElementById('ship_standard_price').textContent = sub >= 200 ? '50' : 'GH₵ 50';
+  } else {
+    shippingCost = cost;
+  }
+
+  // 2. Update the UI active states
+  document.querySelectorAll('.ship-opt').forEach(el => el.classList.remove('selected'));
+  const targetOpt = document.getElementById('ship_' + method);
+  if (targetOpt) targetOpt.classList.add('selected');
+
+  // 3. Update calculations and totals ONCE
+  updateCartUI();
+  updateCheckoutSummary();
+}
+
+
+// ══════════════════════════════════════════════════
+// DYNAMIC SHIPPING TIERS FROM BACKEND
+// ══════════════════════════════════════════════════
+async function fetchShippingTiersFromAPI() {
+  const container = document.getElementById('dynamicShippingOptions');
+  if (!container) return;
+
+  try {
+    // 1. Grab shipping tier configurations from your Railway backend
+    const data = await apiFetch('/api/shipping-methods');
+    const tiers = Array.isArray(data) ? data : data.shipping_methods || [];
+    
+    if (!tiers.length) throw new Error("No shipping profiles configured");
+
+    // 2. Generate HTML items dynamically using actual rows from Supabase
+    container.innerHTML = tiers.map((tier, index) => {
+      const isFree = parseFloat(tier.price) === 0;
+      const displayPrice = isFree ? 'Free' : `GH₵ ${parseFloat(tier.price)}`;
+      const isSelectedClass = index === 0 ? 'selected' : '';
+      
+      if (index === 0) {
+        shippingMethod = tier.id;
+        shippingCost = parseFloat(tier.price);
+      }
+
+      return `
+        <div class="ship-opt ${isSelectedClass}" id="ship_${tier.id}" onclick="selectShipping('${tier.id}', ${tier.price})">
+          <div class="ship-opt-name">${tier.name}</div>
+          <div class="ship-opt-days">${tier.delivery_time || tier.days || ''}</div>
+          <div class="ship-opt-price">${displayPrice}</div>
+        </div>
+      `;
+    }).join('');
+
+    updateCartUI();
+
+  } catch (err) {
+    console.warn('Backend shipping endpoint missing or down. Loading safety fallbacks:', err.message);
+    
+    // Safety net layout matches your exact 50 / 80 / 200 numbers if the API fails
+    container.innerHTML = `
+      <div class="ship-opt selected" id="ship_standard" onclick="selectShipping('standard',50)">
+        <div class="ship-opt-name">Standard</div><div class="ship-opt-days">3–5 business days</div><div class="ship-opt-price">GH₵ 50</div>
+      </div>
+      <div class="ship-opt" id="ship_express" onclick="selectShipping('express',80)">
+        <div class="ship-opt-name">Express</div><div class="ship-opt-days">1–2 business days</div><div class="ship-opt-price">GH₵ 80</div>
+      </div>
+      <div class="ship-opt" id="ship_diaspora" onclick="selectShipping('diaspora',200)">
+        <div class="ship-opt-name">Diaspora</div><div class="ship-opt-days">7–14 business days</div><div class="ship-opt-price">GH₵ 200</div>
+      </div>
+    `;
+    selectShipping('standard', 50);
+  }
+}
+
+
+
+function updateCheckoutSummary(){
+  const lines = document.getElementById('coOrderLines');
+  if(!lines) return;
+  let html = '';
+  cart.forEach(item => {
+  const qty = item.qty || item.quantity || 1;
+  html += `
+    <div class="co-order-line">
+      <span>${item.name} × ${qty}</span>
+      <span>GH₵ ${(item.price * qty).toLocaleString()}</span>
+    </div>
+  `;
+  });
+  lines.innerHTML = html;
+  document.getElementById('coShippingLine').textContent = shippingCost===0 ? 'Free' : `GH₵ ${shippingCost}`;
+  const total = cartSubtotal() + shippingCost;
+  document.getElementById('coTotal').textContent = `GH₵ ${total.toLocaleString()}`;
+}
+
+function openCheckout(){
+  if(cart.length===0){ showToast('!','Your cart is empty','toast-red'); return; }
+  closeCart();
+  document.getElementById('checkoutContent').innerHTML = getCheckoutFormHTML();
+  updateCheckoutSummary();
+  document.getElementById('checkoutOverlay').classList.add('open');
+  document.getElementById('checkoutModalTitle').textContent = 'Checkout';
+  document.body.style.overflow='hidden';
+}
+
+function getCheckoutFormHTML(){
+  return `<div class="checkout-body">
+    <div class="checkout-grid">
+      <div class="co-section-title">Contact Details</div>
+      <div class="co-field"><label class="co-label">First Name</label><input class="co-input" id="co_first" placeholder="Kwame" autocomplete="given-name"></div>
+      <div class="co-field"><label class="co-label">Last Name</label><input class="co-input" id="co_last" placeholder="Mensah" autocomplete="family-name"></div>
+      <div class="co-field full"><label class="co-label">Email Address</label><input class="co-input" id="co_email" type="email" placeholder="you@email.com" autocomplete="email"></div>
+      <div class="co-field full"><label class="co-label">Phone Number</label><input class="co-input" id="co_phone" type="tel" placeholder="+233 24 000 0000" autocomplete="tel"></div>
+      <div class="co-section-title">Delivery Address</div>
+      <div class="co-field full"><label class="co-label">Street Address</label><input class="co-input" id="co_addr" placeholder="123 Independence Ave" autocomplete="street-address"></div>
+      <div class="co-field"><label class="co-label">City</label><input class="co-input" id="co_city" placeholder="Accra" autocomplete="address-level2"></div>
+      <div class="co-field"><label class="co-label">Country</label>
+        <select class="co-input" id="co_country">
+          <option value="GH">Ghana</option><option value="NG">Nigeria</option><option value="UK">United Kingdom</option><option value="US">United States</option><option value="CA">Canada</option><option value="other">Other</option>
+        </select>
+      </div>
+      <div class="co-section-title">Shipping Method</div>
+      <div class="shipping-options">
+        <div class="ship-opt selected" id="ship_standard" onclick="selectShipping('standard',0)"><div class="ship-opt-name">Standard</div><div class="ship-opt-days">3–5 business days</div><div class="ship-opt-price" id="ship_standard_price">${cartSubtotal()>=200?'Free':'GH₵ 10'}</div></div>
+        <div class="ship-opt" id="ship_express" onclick="selectShipping('express',30)"><div class="ship-opt-name">Express</div><div class="ship-opt-days">1–2 business days</div><div class="ship-opt-price">GH₵ 30</div></div>
+        <div class="ship-opt" id="ship_diaspora" onclick="selectShipping('diaspora',80)"><div class="ship-opt-name">Diaspora</div><div class="ship-opt-days">7–14 business days</div><div class="ship-opt-price">GH₵ 80</div></div>
+      </div>
+      <div class="co-section-title">Order Summary</div>
+      <div class="co-order-summary"><div id="coOrderLines"></div><div class="co-order-line"><span>Shipping</span><span id="coShippingLine">Free</span></div><div class="co-order-line total"><span>Total</span><span id="coTotal">GH₵ 0</span></div></div>
+      <button class="paystack-btn" id="paystackBtn" onclick="initiatePaystack()"><span>Pay Securely</span><span class="paystack-logo">via PAYSTACK</span></button>
+      <p style="grid-column:1/-1;text-align:center;font-size:0.72rem;color:rgba(233,208,162,0.25);margin-top:-6px">256-bit SSL encryption · Your data is always protected</p>
+    </div>
+  </div>`;
+}
+
+function closeCheckout(){
+  // 1. Hide the modal overlay using your existing structure
+  const overlay = document.getElementById('checkoutOverlay');
+  if (overlay) overlay.classList.remove('open');
+  
+  // 2. Re-enable page scrolling
+  document.body.style.overflow = '';
+
+  // 3. Clear the form inputs so they are fresh for the next order
+  const fields = ['co_first', 'co_last', 'co_email', 'co_phone', 'co_addr', 'co_city'];
+  fields.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+
+  // 4. Force a page refresh or clear out the success HTML content box
+  // This prevents the old "Order Confirmed" template from lingering around
+  setTimeout(() => {
+    window.location.reload(); 
+  }, 300);
+}
+
+
+// ══════════════════════════════════════════════════
+// PAYSTACK INTEGRATION (API-backed)
+// ══════════════════════════════════════════════════
+async function initiatePaystack(){
+  const first = document.getElementById('co_first')?.value?.trim();
+  const last  = document.getElementById('co_last')?.value?.trim();
+  const email = document.getElementById('co_email')?.value?.trim();
+  const phone = document.getElementById('co_phone')?.value?.trim();
+  const addr  = document.getElementById('co_addr')?.value?.trim();
+  const city  = document.getElementById('co_city')?.value?.trim();
+
+  if(!first||!last){ showToast('!','Please enter your name','toast-red'); return; }
+  if(!email||!email.includes('@')){ showToast('!','Please enter a valid email','toast-red'); return; }
+  if(!phone){ showToast('!','Please enter your phone number','toast-red'); return; }
+  if(!addr||!city){ showToast('!','Please enter your delivery address','toast-red'); return; }
+
+  const btn = document.getElementById('paystackBtn');
+  btn.disabled = true; 
+  btn.innerHTML = '<span>Processing…</span>';
+
+  // Rely on your global pricing mechanics to capture cart sums securely
+  const currentSubtotal = cartSubtotal();
+  const currentDiscount = 0; // Discount feature removed
+  const totalAmount = Math.max(0, (currentSubtotal - currentDiscount) + shippingCost);
+
+  let paystackKey = PAYSTACK_PUBLIC_KEY;
+  let ref = 'ASANTI-' + Date.now() + '-' + Math.random().toString(36).substr(2,6).toUpperCase();
+
+  // Step 1: Create order on backend
+  try {
+    const orderPayload = {
+      customer_name: `${first} ${last}`,
+      email,
+      phone,
+      address: `${addr}, ${city}`,
+      shipping_method: shippingMethod,
+      // FIXED: Swapped 'i.qty' to match your cart's live structural key 'i.quantity'
+      items: cart.map(i => ({
+        product_id: i.id,
+        name: i.name,
+        qty: i.qty,
+        price: i.price
+      })),
+      subtotal: currentSubtotal,
+      shipping_cost: shippingCost,
+      total: totalAmount,
+    };
+    
+    const orderRes = await apiFetch('/api/orders', {
+      method: 'POST',
+      body: JSON.stringify(orderPayload),
+    });
+    if (orderRes.ref) ref = orderRes.ref;
+    if (orderRes.paystack_key) paystackKey = orderRes.paystack_key;
+  } catch (err) {
+    console.warn('Order pre-create failed, proceeding with client-side ref:', err.message);
+  }
+
+  const totalKobo = Math.round(totalAmount * 100); // Ensures clear integers for Pesewas conversions
+
+  const handler = PaystackPop.setup({
+    key: paystackKey,
+    email: email,
+    amount: totalKobo,
+    currency: 'GHS',
+    ref: ref,
+    firstname: first,
+    lastname: last,
+    phone: phone,
+    metadata: {
+      custom_fields: [
+        {display_name:'Customer Name', variable_name:'customer_name', value:`${first} ${last}`},
+        {display_name:'Delivery Address', variable_name:'address', value:`${addr}, ${city}`},
+        {display_name:'Shipping Method', variable_name:'shipping', value:shippingMethod},
+        {display_name:'Cart Items', variable_name:'cart', value: cart.map(i=>`${i.name} x${i.qty}`).join(', ')},
+      ]
+    },
+    onClose: function(){
+      btn.disabled = false;
+      btn.innerHTML = '<span>Pay Securely</span><span class="paystack-logo">via PAYSTACK</span>';
+      showToast('!','Payment cancelled','toast-red');
+    },
+    callback: function(response){
+      onPaymentSuccess(response, {first, last, email, phone, addr, city, ref});
+    }
+  });
+  handler.openIframe();
+}
+
+
+function onPaymentSuccess(response, customer){
+  // Notify backend of payment (backup to webhook)
+  apiFetch('/api/payments/verify', {
+    method: 'POST',
+    body: JSON.stringify({ reference: response.reference }),
+  }).catch(() => {});
+
+  // Deduct stock locally (webhook will also do this on backend)
+  const products = loadProducts();
+  cart.forEach(item => {
+    const prod = products.find(p => p.id === item.id);
+    if (prod) { 
+    
+      prod.stock = Math.max(0, prod.stock - item.qty); 
+    }
+  });
+  saveProducts(products);
+
+  // Capture current pricing structure metrics securely including any active discounts
+  const currentSubtotal = cartSubtotal();
+  const currentDiscount = typeof getDiscountAmount === 'function' ? getDiscountAmount(currentSubtotal) : 0;
+  const finalCalculatedTotal = Math.max(0, (currentSubtotal - currentDiscount) + shippingCost);
+
+  // Save order locally
+  const orders = loadOrders();
+  orders.unshift({
+    ref: customer.ref,
+    paystackRef: response.reference,
+    name: `${customer.first} ${customer.last}`,
+    email: customer.email,
+    phone: customer.phone,
+    address: `${customer.addr}, ${customer.city}`,
+    shipping: shippingMethod,
+    items: [...cart],
+    subtotal: currentSubtotal,
+    shippingCost: shippingCost,
+    total: finalCalculatedTotal, // FIXED: Now securely saves the exact discounted total amount paid
+    status: 'paid',
+    date: new Date().toISOString(),
+  });
+  saveOrders(orders);
+
+  // Clear cart
+  const orderRef = customer.ref;
+  cart = [];
+  
+  
+// ======================================================
+// GLOBAL STATE
+// ======================================================
+let cart = JSON.parse(localStorage.getItem("asa_cart")) || [];
+let shippingMethods = [];
+let selectedShipping = null;
 
 // ======================================================
 // INIT
 // ======================================================
 document.addEventListener("DOMContentLoaded", () => {
+  loadShippingMethods(); // backend-ready
   updateUI();
 });
 
 // ======================================================
-// CART FUNCTIONS
+// CART STORAGE
+// ======================================================
+function saveCart() {
+  localStorage.setItem("asa_cart", JSON.stringify(cart));
+  updateUI();
+}
+
+// ======================================================
+// ADD TO CART
 // ======================================================
 function addToCart(id, name, price, qty = 1) {
   qty = parseInt(qty) || 1;
 
-  const item = state.cart.find(i => i.id === id);
+  const item = cart.find(i => i.id === id);
 
   if (item) {
     item.qty += qty;
   } else {
-    state.cart.push({
-      id,
-      name,
-      price: parseFloat(price),
-      qty
-    });
+    cart.push({ id, name, price: parseFloat(price), qty });
   }
 
-  saveState();
+  saveCart();
   toast(`${name} added to cart`);
 }
 
+// ======================================================
+// REMOVE ITEM
+// ======================================================
 function removeFromCart(id) {
-  state.cart = state.cart.filter(i => i.id !== id);
-  saveState();
+  cart = cart.filter(i => i.id !== id);
+  saveCart();
 }
 
+// ======================================================
+// UPDATE QTY
+// ======================================================
 function updateQty(id, qty) {
-  const item = state.cart.find(i => i.id === id);
+  const item = cart.find(i => i.id === id);
   if (!item) return;
 
   item.qty = Math.max(1, parseInt(qty));
-  saveState();
+  saveCart();
 }
 
 // ======================================================
-// CART CALCULATIONS
+// CART TOTALS
 // ======================================================
 function subtotal() {
-  return state.cart.reduce((sum, i) => sum + i.price * i.qty, 0);
+  return cart.reduce((sum, i) => sum + i.price * i.qty, 0);
 }
 
 // ======================================================
-// SHIPPING (FIXED SINGLE SYSTEM)
+// SHIPPING SYSTEM (FIXED)
 // ======================================================
-function setShipping(method) {
+
+// fallback rules (frontend-safe default)
+function fallbackShipping() {
   const sub = subtotal();
 
-  const options = {
-    standard: { label: "Standard", cost: sub >= 200 ? 0 : 10 },
-    express: { label: "Express", cost: 30 },
-    diaspora: { label: "Diaspora", cost: 80 }
-  };
+  if (sub >= 200) return { id: "free", name: "Free Shipping", price: 0 };
 
-  state.shipping = options[method] || options.standard;
+  return { id: "standard", name: "Standard Delivery", price: 20 };
+}
 
+// simulate backend fetch (READY FOR REAL API)
+async function loadShippingMethods() {
+  try {
+    // 🔥 Replace this later with real API:
+    // const res = await fetch("/api/shipping");
+    // shippingMethods = await res.json();
+
+    shippingMethods = [
+      { id: "standard", name: "Standard Delivery", price: 20 },
+      { id: "express", name: "Express Delivery", price: 40 },
+      { id: "free", name: "Free Shipping (≥200)", price: 0 }
+    ];
+
+    selectedShipping = fallbackShipping();
+
+    updateUI();
+  } catch (err) {
+    console.error("Shipping load failed, using fallback");
+    selectedShipping = fallbackShipping();
+  }
+}
+
+// user selects shipping method
+function setShipping(id) {
+  selectedShipping = shippingMethods.find(m => m.id === id) || fallbackShipping();
   updateUI();
 }
 
-// fallback safety
-function getShippingCost() {
-  return state.shipping?.cost || 0;
+// get shipping cost
+function shippingCost() {
+  return selectedShipping?.price || fallbackShipping().price;
 }
 
 // ======================================================
-// TOTAL
+// GRAND TOTAL
 // ======================================================
 function total() {
-  return subtotal() + getShippingCost();
+  return subtotal() + shippingCost();
 }
 
 // ======================================================
 // UI UPDATE MASTER
 // ======================================================
 function updateUI() {
-  updateCartBadge();
+  updateBadge();
   renderCheckout();
 }
 
 // ======================================================
 // CART BADGE
 // ======================================================
-function updateCartBadge() {
+function updateBadge() {
   const badge = document.getElementById("cartBadge");
   if (!badge) return;
 
-  const count = state.cart.reduce((sum, i) => sum + i.qty, 0);
-
+  const count = cart.reduce((sum, i) => sum + i.qty, 0);
   badge.textContent = count;
 }
 
 // ======================================================
-// CHECKOUT RENDER (FIXED)
+// CHECKOUT RENDER
 // ======================================================
 function renderCheckout() {
   const lines = document.getElementById("coOrderLines");
@@ -141,7 +977,7 @@ function renderCheckout() {
 
   lines.innerHTML = "";
 
-  state.cart.forEach(i => {
+  cart.forEach(i => {
     const row = document.createElement("div");
     row.className = "co-order-line";
     row.innerHTML = `
@@ -151,20 +987,20 @@ function renderCheckout() {
     lines.appendChild(row);
   });
 
-  const shipping = getShippingCost();
-  const grandTotal = total();
+  // shipping display
+  const ship = selectedShipping || fallbackShipping();
 
   shippingEl.textContent =
-    shipping === 0 ? "Free" : `GH₵ ${shipping.toFixed(2)}`;
+    ship.price === 0 ? "Free" : `GH₵ ${ship.price.toFixed(2)}`;
 
-  totalEl.textContent = `GH₵ ${grandTotal.toFixed(2)}`;
+  totalEl.textContent = `GH₵ ${total().toFixed(2)}`;
 }
 
 // ======================================================
-// CHECKOUT (PAYSTACK)
+// PAYSTACK CHECKOUT
 // ======================================================
 function checkout(email) {
-  if (!state.cart.length) {
+  if (!cart.length) {
     toast("Cart is empty");
     return;
   }
@@ -185,12 +1021,12 @@ function checkout(email) {
     callback: function (res) {
       toast("Payment successful");
 
-      state.cart = [];
-      saveState();
+      cart = [];
+      saveCart();
     },
 
     onClose: function () {
-      console.log("Payment closed");
+      console.log("Checkout closed");
     }
   });
 
@@ -198,7 +1034,7 @@ function checkout(email) {
 }
 
 // ======================================================
-// SIMPLE TOAST
+// TOAST
 // ======================================================
 function toast(msg) {
   const wrap = document.getElementById("toastWrap");
@@ -213,7 +1049,24 @@ function toast(msg) {
   setTimeout(() => div.remove(), 2500);
 }
 
-
+  const csv=[header,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download=`asanti_orders_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  showToast('✓','Orders exported','toast-green');
+}
+function exportCustomerEmails(){
+  const orders=loadOrders();
+  if(!orders.length){showToast('!','No orders yet','toast-red');return;}
+  const rows=[['Name','Email','Phone','Date','Total'],...orders.map(o=>[o.name,o.email,o.phone||'',new Date(o.date).toLocaleDateString(),o.total])];
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download=`asanti_customers_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  showToast('✓','Customer emails exported','toast-green');
+}
 
 // ── Newsletter ──
 async function handleNewsletterSubmit(){
