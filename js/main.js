@@ -221,14 +221,16 @@ function renderStoreProducts(){
       <div class="product-img" style="background:linear-gradient(145deg,#1A0709,#2E1009);position:relative">
         ${imgHtml}${badgeHtml}
       </div>
-      <div class="product-info">
-        <div class="product-name">${p.name}</div>
-        ${p.desc?`<div class="product-desc">${p.desc}</div>`:''}
-        <div class="product-price">GH₵ ${p.price.toLocaleString()}</div>
-        <div style="font-size:0.72rem;${stockColor};margin-bottom:10px">${stockLabel}</div>
-        <button class="product-add-btn${soldOut?' btn-disabled':''}" ${soldOut?'disabled':''} onclick="addToCart('${p.id}','${p.name.replace(/'/g,"\'")}',${p.price},1)">
-          ${soldOut?'Out of Stock':'Add to Cart'}
-        </button>
+      <div class="product-body">
+        <div class="product-title">${p.name}</div>
+        ${p.desc?`<div class="product-subtitle">${p.desc}</div>`:''}
+        <div class="product-price-row">
+          <div class="product-price">GH₵ ${parseFloat(p.price).toLocaleString('en-GH',{minimumFractionDigits:0})}</div>
+          <button class="btn ${soldOut?'btn-outline':'btn-gold'} btn-sm" ${soldOut?'disabled':''} onclick="addToCart('${p.id}','${p.name.replace(/'/g,&quot;\\'&quot;)}',${parseFloat(p.price)},1)">
+            ${soldOut?'Out of Stock':'Add to Cart'}
+          </button>
+        </div>
+        <div style="font-size:0.72rem;${stockColor};margin-top:6px">${stockLabel}</div>
       </div>
     </div>`;
   }).join('');
@@ -253,7 +255,19 @@ function observeReveal(){
   }
 }
 document.addEventListener('DOMContentLoaded', () => {
-  // 1. Run animation and image initializers once
+  // 1. Clear stale cache on version change
+  const CACHE_VERSION = 'v5';
+  if (localStorage.getItem('asanti_cache_version') !== CACHE_VERSION) {
+    localStorage.removeItem('asanti_products');
+    localStorage.removeItem('asanti_shipping');
+    localStorage.setItem('asanti_cache_version', CACHE_VERSION);
+  }
+
+  // 2. Apply saved banner/content settings
+  const s = JSON.parse(localStorage.getItem('asanti_content') || '{}');
+  applyBanner(s);
+
+  // 3. Run animation and image initializers once
   initImages();
   observeReveal();
   setTimeout(observeReveal, 400);
@@ -557,7 +571,7 @@ async function fetchShippingTiersFromAPI() {
 
   try {
     // 1. Grab shipping tier configurations from your Railway backend
-    const data = await apiFetch('/api/shipping-methods');
+    const data = await apiFetch('/api/shipping_methods');
     const tiers = Array.isArray(data) ? data : data.shipping_methods || [];
     
     if (!tiers.length) throw new Error("No shipping profiles configured");
@@ -773,6 +787,13 @@ async function initiatePaystack(){
 
   const totalKobo = Math.round(totalAmount * 100); // Ensures clear integers for Pesewas conversions
 
+  if(typeof PaystackPop === 'undefined'){
+    showToast('!','Payment system not loaded - please refresh','toast-red');
+    btn.disabled = false;
+    btn.innerHTML = '<span>Pay Securely</span><span class="paystack-logo">via PAYSTACK</span>';
+    return;
+  }
+  try {
   const handler = PaystackPop.setup({
     key: paystackKey,
     email: email,
@@ -799,7 +820,13 @@ async function initiatePaystack(){
       onPaymentSuccess(response, {first, last, email, phone, addr, city, ref});
     }
   });
-  handler.openIframe();
+    handler.openIframe();
+  } catch(err) {
+    console.error('Paystack error:', err);
+    btn.disabled = false;
+    btn.innerHTML = '<span>Pay Securely</span><span class="paystack-logo">via PAYSTACK</span>';
+    showToast('!','Payment error - please try again','toast-red');
+  }
 }
 
 
@@ -919,7 +946,63 @@ function switchAdminTab(btn, sectionId){
   document.getElementById(sectionId).classList.add('active');
   if(sectionId==='adminDiscounts') renderDiscounts();
   if(sectionId==='adminContent') loadContentSettings();
+  if(sectionId==='adminSettings') renderShippingMethods();
 }
+
+// ══════════════════════════════════════════════════
+// SHIPPING METHODS Admin editor
+// ══════════════════════════════════════════════════
+const SHIPPING_DEFAULT = [
+  {id:'standard', name:'Standard',  days:'3-5 business days', price:0,  freeOver:200},
+  {id:'express',  name:'Express',   days:'1-2 business days', price:30, freeOver:null},
+  {id:'diaspora', name:'Diaspora',  days:'7-14 business days',price:80, freeOver:null},
+];
+function loadShippingMethods(){
+  try{ return JSON.parse(localStorage.getItem('asanti_shipping')) || SHIPPING_DEFAULT; }
+  catch{ return SHIPPING_DEFAULT; }
+}
+function renderShippingMethods(){
+  const list = document.getElementById('shippingMethodsList');
+  if(!list) return;
+  const methods = loadShippingMethods();
+  list.innerHTML = methods.map(m => `
+    <div class="shipping-row" style="background:rgba(217,164,65,0.04);border:1px solid rgba(217,164,65,0.12);border-radius:8px;padding:12px;display:grid;grid-template-columns:1fr 1fr 1fr 80px 80px 32px;gap:8px;align-items:center">
+      <div><div class="admin-label" style="font-size:0.65rem;margin-bottom:3px">Name</div><input class="admin-input sm-name" value="${m.name}"></div>
+      <div><div class="admin-label" style="font-size:0.65rem;margin-bottom:3px">ID</div><input class="admin-input sm-id" value="${m.id}"></div>
+      <div><div class="admin-label" style="font-size:0.65rem;margin-bottom:3px">Delivery time</div><input class="admin-input sm-days" value="${m.days}"></div>
+      <div><div class="admin-label" style="font-size:0.65rem;margin-bottom:3px">Price</div><input class="admin-input sm-price" type="number" min="0" value="${m.price}"></div>
+      <div><div class="admin-label" style="font-size:0.65rem;margin-bottom:3px">Free over</div><input class="admin-input sm-freeover" type="number" min="0" value="${m.freeOver||''}"></div>
+      <button onclick="this.closest('.shipping-row').remove()" style="background:rgba(220,50,50,0.15);border:1px solid rgba(220,50,50,0.3);border-radius:6px;color:#e05;padding:6px;cursor:pointer">X</button>
+    </div>`).join('');
+}
+function addShippingMethod(){
+  const list = document.getElementById('shippingMethodsList');
+  if(!list) return;
+  const row = document.createElement('div');
+  row.className = 'shipping-row';
+  row.style.cssText = 'background:rgba(217,164,65,0.04);border:1px solid rgba(217,164,65,0.12);border-radius:8px;padding:12px;display:grid;grid-template-columns:1fr 1fr 1fr 80px 80px 32px;gap:8px;align-items:center';
+  row.innerHTML = `
+    <div><input class="admin-input sm-name" placeholder="Name"></div>
+    <div><input class="admin-input sm-id" placeholder="id"></div>
+    <div><input class="admin-input sm-days" placeholder="Delivery time"></div>
+    <div><input class="admin-input sm-price" type="number" min="0" value="0"></div>
+    <div><input class="admin-input sm-freeover" type="number" min="0" placeholder=""></div>
+    <button onclick="this.closest('.shipping-row').remove()" style="background:rgba(220,50,50,0.15);border:1px solid rgba(220,50,50,0.3);border-radius:6px;color:#e05;padding:6px;cursor:pointer">X</button>`;
+  list.appendChild(row);
+}
+function saveShippingMethods(){
+  const rows = document.querySelectorAll('.shipping-row');
+  const methods = Array.from(rows).map(row => ({
+    id:       row.querySelector('.sm-id').value.trim().toLowerCase().replace(/\s+/g,'_'),
+    name:     row.querySelector('.sm-name').value.trim(),
+    days:     row.querySelector('.sm-days').value.trim(),
+    price:    parseFloat(row.querySelector('.sm-price').value)||0,
+    freeOver: row.querySelector('.sm-freeover').value ? parseFloat(row.querySelector('.sm-freeover').value) : null,
+  })).filter(m=>m.name);
+  localStorage.setItem('asanti_shipping', JSON.stringify(methods));
+  showToast('OK','Shipping methods saved','toast-green');
+}
+
 function renderAdmin(){
   renderAdminStats();
   renderAdminProducts();
@@ -927,6 +1010,7 @@ function renderAdmin(){
   renderAdminAlerts();
   renderLowStock();
   renderDiscounts();
+  renderShippingMethods();
   loadContentSettings();
 }
 

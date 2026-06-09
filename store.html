@@ -109,75 +109,18 @@
           <button class="filter-btn" onclick="filterProducts(this,'merch')">Merchandise</button>
         </div>
         <div class="products-grid" id="productsGrid">
-          <div class="product-card" data-cat="game">
-            <div class="product-img" style="background:linear-gradient(145deg,#1A0709,#2E1009)">
-              <div class="adinkra-dots"></div>
-              <div class="product-img-text"><span style="font-size:1.6rem;color:rgba(217,164,65,0.22);display:block">ASA NTI</span><span style="font-size:0.55rem;letter-spacing:0.2em;color:rgba(233,208,162,0.15)">STANDARD</span></div>
-              <span class="product-badge badge-new">New</span>
-            </div>
-            <div class="product-body">
-              <div class="product-title">ASA NTI — Collector's Edition</div>
-              <div class="product-subtitle">110 cards · Illustrated rulebook · Luxury box</div>
-              <div class="product-price-row"><div class="product-price"><span data-product-price="collectors">GH₵ 130.00</span></div><button class="btn btn-gold btn-sm" onclick="addToCart('collectors','ASA NTI — Collector\'s Edition',getProductPrice('collectors'))">Add to Cart</button></div>
-            </div>
+          <!-- Skeleton cards shown before JS renders API products -->
+          <div class="product-card" style="opacity:0.3;pointer-events:none">
+            <div class="product-img" style="background:#1A0709"></div>
+            <div class="product-body"><div class="product-title" style="background:rgba(217,164,65,0.1);height:16px;border-radius:4px;margin-bottom:8px"></div><div style="background:rgba(217,164,65,0.07);height:12px;border-radius:4px"></div></div>
           </div>
-          <div class="product-card" data-cat="bundle">
-            <div class="product-img" style="background:linear-gradient(145deg,#1A0709,#2A1508)">
-              <div class="adinkra-dots"></div>
-              <div class="product-img-text"><span style="font-size:1.3rem;color:rgba(217,164,65,0.2);display:block">DOUBLE</span><span style="font-size:0.55rem;letter-spacing:0.2em;color:rgba(233,208,162,0.12)">BUNDLE</span></div>
-              <span class="product-badge badge-ltd">Save 15%</span>
-            </div>
-            <div class="product-body">
-              <div class="product-title">Two-Box Bundle</div>
-              <div class="product-subtitle">Perfect gift set · 2 full game boxes</div>
-              <div class="product-price-row"><div class="product-price"><span data-product-price="bundle2">GH₵ 250.00</span></div><button class="btn btn-gold btn-sm" onclick="addToCart('bundle2','Two-Box Bundle',getProductPrice('bundle2'))">Add to Cart</button></div>
-            </div>
+          <div class="product-card" style="opacity:0.2;pointer-events:none">
+            <div class="product-img" style="background:#1A0709"></div>
+            <div class="product-body"><div class="product-title" style="background:rgba(217,164,65,0.1);height:16px;border-radius:4px;margin-bottom:8px"></div><div style="background:rgba(217,164,65,0.07);height:12px;border-radius:4px"></div></div>
           </div>
-          <div class="product-card" data-cat="merch">
-            <div class="product-img" style="background:linear-gradient(145deg,#1A0A04,#2A1508)">
-              <div class="adinkra-dots"></div>
-              <div class="product-img-text"><span style="font-size:1rem;color:rgba(217,164,65,0.18);display:block;letter-spacing:0.1em">TOTE BAG</span><span style="font-size:0.55rem;letter-spacing:0.2em;color:rgba(233,208,162,0.1)">ADINKRA PRINT</span></div>
-            </div>
-            <div class="product-body">
-              <div class="product-title">Adinkra Tote Bag</div>
-              <div class="product-subtitle">Canvas tote · Gold-print Adinkra symbols</div>
-              <div class="product-price-row"><div class="product-price"><span data-product-price="tote">GH₵ 100.00</span></div><button class="btn btn-gold btn-sm" onclick="addToCart('tote','ASA NTI Tote Bag',getProductPrice('tote'))">Add to Cart</button></div>
-            </div>
-          </div>
-          <div class="product-card" data-cat="game">
-            <div class="product-img" style="background:linear-gradient(145deg,#0A1205,#1A2A10)">
-              <div class="adinkra-dots"></div>
-              <div class="product-img-text"><span style="font-size:1rem;color:rgba(94,123,82,0.3);display:block">EXPANSION</span><span style="font-size:0.55rem;letter-spacing:0.2em;color:rgba(94,123,82,0.15)">COMING SOON</span></div>
-              <span class="product-badge badge-soon">Coming Soon</span>
-            </div>
-            <div class="product-body">
-              <div class="product-title">Expansion Pack — Vol. 1</div>
-              <div class="product-subtitle">30 new cards · New Adinkra mechanics</div>
-              <div class="product-price-row"><div class="product-price" style="color:rgba(217,164,65,0.4)">TBA</div><button class="btn btn-outline btn-sm">Notify Me</button></div>
-            </div>
-          </div>
-          <div class="product-card" data-cat="merch">
-            <div class="product-img" style="background:linear-gradient(145deg,#1A0709,#2E1009)">
-              <div class="adinkra-dots"></div>
-              <div class="product-img-text"><span style="font-size:1rem;color:rgba(217,164,65,0.18);display:block">POSTER</span><span style="font-size:0.55rem;letter-spacing:0.2em;color:rgba(233,208,162,0.1)">A2 FORMAT</span></div>
-            </div>
-            <div class="product-body">
-              <div class="product-title">Three Suits Art Poster</div>
-              <div class="product-subtitle">A2 · 170gsm matte · All three suit symbols</div>
-              <div class="product-price-row"><div class="product-price"><span data-product-price="poster">GH₵ 80.00</span></div><button class="btn btn-gold btn-sm" onclick="addToCart('poster','Three Suits Art Poster',getProductPrice('poster'))">Add to Cart</button></div>
-            </div>
-          </div>
-          <div class="product-card" data-cat="bundle">
-            <div class="product-img" style="background:linear-gradient(145deg,#1A0A04,#321A08)">
-              <div class="adinkra-dots"></div>
-              <div class="product-img-text"><span style="font-size:0.9rem;color:rgba(217,164,65,0.18);display:block">GIFT SET</span><span style="font-size:0.55rem;letter-spacing:0.2em;color:rgba(233,208,162,0.1)">PREMIUM</span></div>
-              <span class="product-badge badge-ltd">Limited</span>
-            </div>
-            <div class="product-body">
-              <div class="product-title">Premium Gift Set</div>
-              <div class="product-subtitle">Game + Tote + Poster · Gift-wrapped</div>
-              <div class="product-price-row"><div class="product-price"><span data-product-price="giftset">GH₵ 195.00</span></div><button class="btn btn-gold btn-sm" onclick="addToCart('giftset','Premium Gift Set',getProductPrice('giftset'))">Add to Cart</button></div>
-            </div>
+          <div class="product-card" style="opacity:0.1;pointer-events:none">
+            <div class="product-img" style="background:#1A0709"></div>
+            <div class="product-body"><div class="product-title" style="background:rgba(217,164,65,0.1);height:16px;border-radius:4px;margin-bottom:8px"></div><div style="background:rgba(217,164,65,0.07);height:12px;border-radius:4px"></div></div>
           </div>
         </div>
       </div>
