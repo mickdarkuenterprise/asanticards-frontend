@@ -7,6 +7,7 @@ const IMG_AHENNIE = "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZ
 // ══════════════════════════════════════════════════
 const API_BASE = 'https://asanticards-production.up.railway.app';
 const PAYSTACK_PUBLIC_KEY = 'pk_live_ec1ec560fc23b6f40264e23c7782d27fad86171b';
+let LIVE_SHIPPING_METHODS = []; // This will hold your live rows from Supabase
 
 
 // ── API helpers ──
@@ -816,438 +817,231 @@ function onPaymentSuccess(response, customer){
   // Clear cart
   const orderRef = customer.ref;
   cart = [];
-  updateCartUI();
+  
+  
+// ======================================================
+// GLOBAL STATE
+// ======================================================
+let cart = JSON.parse(localStorage.getItem("asa_cart")) || [];
+let shippingMethods = [];
+let selectedShipping = null;
 
-  // Show success modal overlay contents dynamically
-  document.getElementById('checkoutModalTitle').textContent = 'Order Confirmed';
-  document.getElementById('checkoutContent').innerHTML = `
-    <div class="order-success">
-      <div class="success-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
-      <div class="success-title">Payment Successful!</div>
-      <div class="success-ref">Order Ref: ${orderRef}</div>
-      <p class="success-msg">Thank you for your order! A confirmation has been sent to <strong style="color:var(--gold)">${customer.email}</strong>. Your order will be dispatched within 1–2 business days.</p>
-      <button class="btn btn-gold" style="margin-top:28px" onclick="closeCheckout()">Continue Shopping</button>
-    </div>`;
-  showToast('✓', 'Order placed successfully!', 'toast-green');
-}
+// ======================================================
+// INIT
+// ======================================================
+document.addEventListener("DOMContentLoaded", () => {
+  loadShippingMethods(); // backend-ready
+  updateUI();
+});
 
-
-// ══════════════════════════════════════════════════
-// TOAST NOTIFICATIONS
-// ══════════════════════════════════════════════════
-function showToast(icon, msg, type='toast-gold'){
-  const wrap = document.getElementById('toastWrap');
-  const t = document.createElement('div');
-  t.className = `toast ${type}`;
-  t.innerHTML = `<span class="toast-icon">${icon}</span><span>${msg}</span>`;
-  wrap.appendChild(t);
-  requestAnimationFrame(()=>{ t.classList.add('show'); });
-  setTimeout(()=>{ t.classList.remove('show'); setTimeout(()=>t.remove(),400); }, 3000);
+// ======================================================
+// CART STORAGE
+// ======================================================
+function saveCart() {
+  localStorage.setItem("asa_cart", JSON.stringify(cart));
+  updateUI();
 }
 
-// ══════════════════════════════════════════════════
-// ADMIN PANEL
-// ══════════════════════════════════════════════════
-function openAdmin(){
-  document.getElementById('admin-panel').classList.add('open');
-  document.getElementById('adminPwInput').value='';
-  document.getElementById('adminLoginScreen').style.display='flex';
-  document.getElementById('adminDashboard').style.display='none';
-  document.body.style.overflow='hidden';
-}
-function closeAdmin(){
-  document.getElementById('admin-panel').classList.remove('open');
-  document.body.style.overflow='';
-}
-async function checkAdminPw(){
-  const pw = document.getElementById('adminPwInput').value;
+// ======================================================
+// ADD TO CART
+// ======================================================
+function addToCart(id, name, price, qty = 1) {
+  qty = parseInt(qty) || 1;
 
-  try {
-    const res = await apiFetch('/api/admin/login', {
-      method: 'POST',
-      body: JSON.stringify({ password: pw }),
-    });
-    if (res.token) {
-      localStorage.setItem('asanti_admin_token', res.token);
-    }
-    document.getElementById('adminLoginScreen').style.display='none';
-    document.getElementById('adminDashboard').style.display='block';
-    renderAdmin();
-    fetchOrdersFromAPI();
-  } catch (err) {
-    showToast('✕','Incorrect password','toast-red');
-    document.getElementById('adminPwInput').value='';
-    document.getElementById('adminPwInput').focus();
-  }
-}
-function switchAdminTab(btn, sectionId){
-  document.querySelectorAll('.admin-tab').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('.admin-section').forEach(s=>s.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById(sectionId).classList.add('active');
-  if(sectionId==='adminDiscounts') renderDiscounts();
-  if(sectionId==='adminContent') loadContentSettings();
-}
-function renderAdmin(){
-  renderAdminStats();
-  renderAdminProducts();
-  renderAdminOrders();
-  renderAdminAlerts();
-  renderLowStock();
-  renderDiscounts();
-  loadContentSettings();
-}
+  const item = cart.find(i => i.id === id);
 
-// ── STATS ──
-function renderAdminStats(){
-  const orders=loadOrders(), products=loadProducts();
-  const revenue=orders.filter(o=>o.status==='paid').reduce((s,o)=>s+o.total,0);
-  const totalStock=products.reduce((s,p)=>s+p.stock,0);
-  const lowStock=products.filter(p=>p.stock>0&&p.stock<=5).length;
-  document.getElementById('adminStats').innerHTML=`
-    <div class="admin-stat"><div class="admin-stat-label">Total Revenue</div><div class="admin-stat-val">GH₵ ${revenue.toLocaleString()}</div><div class="admin-stat-sub">All time paid orders</div></div>
-    <div class="admin-stat"><div class="admin-stat-label">Total Orders</div><div class="admin-stat-val">${orders.length}</div><div class="admin-stat-sub">${orders.filter(o=>o.status==='paid').length} paid</div></div>
-    <div class="admin-stat"><div class="admin-stat-label">Products</div><div class="admin-stat-val">${products.length}</div><div class="admin-stat-sub">${totalStock} total units</div></div>
-    <div class="admin-stat"><div class="admin-stat-label">Low Stock</div><div class="admin-stat-val" style="color:${lowStock>0?'#f0a040':'#8eba80'}">${lowStock}</div><div class="admin-stat-sub">Needing restock</div></div>`;
-}
-function renderAdminAlerts(){
-  const products=loadProducts();
-  const out=products.filter(p=>p.stock===0), low=products.filter(p=>p.stock>0&&p.stock<=5);
-  let html='';
-  out.forEach(p=>{html+=`<div class="alert-badge">⚠ ${p.name} is OUT OF STOCK</div> `;});
-  low.forEach(p=>{html+=`<div class="alert-badge" style="color:#f0a040;border-color:rgba(200,120,0,0.3);background:rgba(200,120,0,0.1)">⚑ ${p.name} — only ${p.stock} left</div> `;});
-  document.getElementById('adminAlerts').innerHTML=html;
-}
-function renderLowStock(){
-  const products=loadProducts(), low=products.filter(p=>p.stock<=5);
-  if(!low.length){document.getElementById('adminLowStock').innerHTML='<div class="admin-empty">All products well stocked ✓</div>';return;}
-  document.getElementById('adminLowStock').innerHTML=low.map(p=>{
-    const pill=p.stock===0?'<span class="stock-pill stock-out">Out of Stock</span>':`<span class="stock-pill stock-low">${p.stock} left</span>`;
-    return `<div class="prod-row"><div class="prod-row-name">${p.name}<div class="prod-row-cat">${p.category}</div></div>${pill}</div>`;
-  }).join('');
-}
-
-// ── PRODUCTS ──
-let pmImgData = null;
-function openAddProduct(){
-  pmImgData=null;
-  document.getElementById('pmName').value='';
-  document.getElementById('pmPrice').value='';
-  document.getElementById('pmStock').value='';
-  document.getElementById('pmCategory').value='game';
-  document.getElementById('pmBadge').value='';
-  document.getElementById('pmDesc').value='';
-  document.getElementById('pmEditId').value='';
-  document.getElementById('pmImgPreview').innerHTML='📷';
-  document.getElementById('productModalTitle').textContent='Add Product';
-  document.getElementById('productModal').style.display='flex';
-}
-function openEditProduct(id){
-  const products=loadProducts(), p=products.find(x=>x.id===id);
-  if(!p) return;
-  pmImgData=p.image||null;
-  document.getElementById('pmName').value=p.name;
-  document.getElementById('pmPrice').value=p.price;
-  document.getElementById('pmStock').value=p.stock;
-  document.getElementById('pmCategory').value=p.category||'game';
-  document.getElementById('pmBadge').value=p.badge||'';
-  document.getElementById('pmDesc').value=p.desc||'';
-  document.getElementById('pmEditId').value=id;
-  document.getElementById('pmImgPreview').innerHTML=p.image?`<img src="${p.image}" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`:'📷';
-  document.getElementById('productModalTitle').textContent='Edit Product';
-  document.getElementById('productModal').style.display='flex';
-}
-function closeProductModal(){
-  document.getElementById('productModal').style.display='none';
-  pmImgData=null;
-}
-function handleProductImgUpload(e){
-  const file=e.target.files[0]; if(!file) return;
-  const reader=new FileReader();
-  reader.onload=ev=>{
-    pmImgData=ev.target.result;
-    document.getElementById('pmImgPreview').innerHTML=`<img src="${pmImgData}" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`;
-  };
-  reader.readAsDataURL(file);
-}
-function saveProductModal(){
-  const name=document.getElementById('pmName').value.trim();
-  const price=parseFloat(document.getElementById('pmPrice').value)||0;
-  const stock=parseInt(document.getElementById('pmStock').value)||0;
-  const category=document.getElementById('pmCategory').value;
-  const badge=document.getElementById('pmBadge').value;
-  const desc=document.getElementById('pmDesc').value.trim();
-  const editId=document.getElementById('pmEditId').value;
-  if(!name){showToast('⚠','Product name is required','toast-red');return;}
-  const products=loadProducts();
-  if(editId){
-    const p=products.find(x=>x.id===editId);
-    if(p){Object.assign(p,{name,price,stock,category,badge,desc});if(pmImgData)p.image=pmImgData;}
-    showToast('✓',`${name} updated`,'toast-green');
+  if (item) {
+    item.qty += qty;
   } else {
-    const id='prod_'+Date.now();
-    products.push({id,name,price,stock,category,badge,desc,image:pmImgData||null,visible:true});
-    showToast('✓',`${name} added`,'toast-green');
+    cart.push({ id, name, price: parseFloat(price), qty });
   }
-  saveProducts(products);
-  closeProductModal();
-  renderAdmin();
-  renderStoreProducts();
-}
-function deleteProduct(id){
-  if(!confirm('Delete this product? This cannot be undone.')) return;
-  const products=loadProducts().filter(p=>p.id!==id);
-  saveProducts(products);
-  renderAdmin();
-  renderStoreProducts();
-  showToast('✓','Product deleted','toast-green');
-}
-function toggleProductVisibility(id){
-  const products=loadProducts();
-  const p=products.find(x=>x.id===id);
-  if(p){p.visible=(p.visible===false)?true:false;}
-  saveProducts(products);
-  renderAdminProducts();
-  renderStoreProducts();
-}
-function renderAdminProducts(){
-  const products=loadProducts();
-  const el=document.getElementById('adminProductList');
-  if(!products.length){el.innerHTML='<div class="admin-empty">No products yet. Add one above.</div>';return;}
-  el.innerHTML=products.map(p=>{
-    const stockClass=p.stock===0?'stock-out':p.stock<=5?'stock-low':'stock-ok';
-    const stockLabel=p.stock===0?'Out of Stock':p.stock<=5?`Low (${p.stock})`:`In Stock (${p.stock})`;
-    const visLabel=p.visible===false?'Hidden':'Visible';
-    const imgHtml=p.image?`<img src="${p.image}" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`:'<span style="font-size:1.4rem;color:rgba(217,164,65,0.3)">📦</span>';
-    return `<div class="prod-card">
-      <div class="prod-card-img" onclick="openEditProduct('${p.id}')">${imgHtml}<div class="img-upload-hint">✏</div></div>
-      <div class="prod-card-body">
-        <div class="prod-card-name">${p.name}</div>
-        <div class="prod-card-meta">
-          <span>GH₵ ${p.price}</span>
-          <span class="stock-pill ${stockClass}" style="font-size:0.68rem;padding:2px 8px">${stockLabel}</span>
-          ${p.badge?`<span style="background:rgba(217,164,65,0.12);border:1px solid rgba(217,164,65,0.25);border-radius:4px;padding:1px 6px;font-size:0.65rem;color:var(--gold)">${p.badge}</span>`:''}
-          <span style="color:${p.visible===false?'#e87a7a':'#8eba80'}">${visLabel}</span>
-        </div>
-        ${p.desc?`<div style="font-size:0.75rem;color:rgba(233,208,162,0.4);margin-bottom:8px;line-height:1.4">${p.desc}</div>`:''}
-        <div class="prod-card-actions">
-          <button class="btn-save-sm" onclick="openEditProduct('${p.id}')">Edit</button>
-          <button class="btn-save-sm" onclick="toggleProductVisibility('${p.id}')">${p.visible===false?'Show':'Hide'}</button>
-          <button class="btn-del-sm" onclick="deleteProduct('${p.id}')">Delete</button>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
+
+  saveCart();
+  toast(`${name} added to cart`);
 }
 
-// ── ORDERS ──
-function renderAdminOrders(){
-  const orders=loadOrders();
-  const el=document.getElementById('adminOrderList');
-  const recentEl=document.getElementById('adminRecentOrders');
-  if(!orders.length){
-    el.innerHTML='<div class="admin-empty">No orders yet</div>';
-    if(recentEl) recentEl.innerHTML='<div class="admin-empty">No orders yet</div>';
+// ======================================================
+// REMOVE ITEM
+// ======================================================
+function removeFromCart(id) {
+  cart = cart.filter(i => i.id !== id);
+  saveCart();
+}
+
+// ======================================================
+// UPDATE QTY
+// ======================================================
+function updateQty(id, qty) {
+  const item = cart.find(i => i.id === id);
+  if (!item) return;
+
+  item.qty = Math.max(1, parseInt(qty));
+  saveCart();
+}
+
+// ======================================================
+// CART TOTALS
+// ======================================================
+function subtotal() {
+  return cart.reduce((sum, i) => sum + i.price * i.qty, 0);
+}
+
+// ======================================================
+// SHIPPING SYSTEM (FIXED)
+// ======================================================
+
+// fallback rules (frontend-safe default)
+function fallbackShipping() {
+  const sub = subtotal();
+
+  if (sub >= 200) return { id: "free", name: "Free Shipping", price: 0 };
+
+  return { id: "standard", name: "Standard Delivery", price: 20 };
+}
+
+// simulate backend fetch (READY FOR REAL API)
+async function loadShippingMethods() {
+  try {
+    // 🔥 Replace this later with real API:
+    // const res = await fetch("/api/shipping");
+    // shippingMethods = await res.json();
+
+    shippingMethods = [
+      { id: "standard", name: "Standard Delivery", price: 20 },
+      { id: "express", name: "Express Delivery", price: 40 },
+      { id: "free", name: "Free Shipping (≥200)", price: 0 }
+    ];
+
+    selectedShipping = fallbackShipping();
+
+    updateUI();
+  } catch (err) {
+    console.error("Shipping load failed, using fallback");
+    selectedShipping = fallbackShipping();
+  }
+}
+
+// user selects shipping method
+function setShipping(id) {
+  selectedShipping = shippingMethods.find(m => m.id === id) || fallbackShipping();
+  updateUI();
+}
+
+// get shipping cost
+function shippingCost() {
+  return selectedShipping?.price || fallbackShipping().price;
+}
+
+// ======================================================
+// GRAND TOTAL
+// ======================================================
+function total() {
+  return subtotal() + shippingCost();
+}
+
+// ======================================================
+// UI UPDATE MASTER
+// ======================================================
+function updateUI() {
+  updateBadge();
+  renderCheckout();
+}
+
+// ======================================================
+// CART BADGE
+// ======================================================
+function updateBadge() {
+  const badge = document.getElementById("cartBadge");
+  if (!badge) return;
+
+  const count = cart.reduce((sum, i) => sum + i.qty, 0);
+  badge.textContent = count;
+}
+
+// ======================================================
+// CHECKOUT RENDER
+// ======================================================
+function renderCheckout() {
+  const lines = document.getElementById("coOrderLines");
+  const shippingEl = document.getElementById("coShippingLine");
+  const totalEl = document.getElementById("coTotal");
+
+  if (!lines || !shippingEl || !totalEl) return;
+
+  lines.innerHTML = "";
+
+  cart.forEach(i => {
+    const row = document.createElement("div");
+    row.className = "co-order-line";
+    row.innerHTML = `
+      <span>${i.name} × ${i.qty}</span>
+      <span>GH₵ ${(i.price * i.qty).toFixed(2)}</span>
+    `;
+    lines.appendChild(row);
+  });
+
+  // shipping display
+  const ship = selectedShipping || fallbackShipping();
+
+  shippingEl.textContent =
+    ship.price === 0 ? "Free" : `GH₵ ${ship.price.toFixed(2)}`;
+
+  totalEl.textContent = `GH₵ ${total().toFixed(2)}`;
+}
+
+// ======================================================
+// PAYSTACK CHECKOUT
+// ======================================================
+function checkout(email) {
+  if (!cart.length) {
+    toast("Cart is empty");
     return;
   }
-  const renderOrder=o=>`<div class="order-row-v2">
-    <div class="order-row-v2-head">
-      <div><div class="order-row-v2-ref">${o.ref}</div><div class="order-row-v2-meta">${new Date(o.date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}</div></div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <span class="order-status status-${o.status}">${o.status.charAt(0).toUpperCase()+o.status.slice(1)}</span>
-        <div class="order-amt">GH₵ ${o.total.toLocaleString()}</div>
-      </div>
-    </div>
-    <div class="order-row-v2-body">
-      <div class="order-row-v2-field"><strong>${o.name}</strong>${o.email}</div>
-      <div class="order-row-v2-field"><strong>${o.items.map(i=>`${i.name} ×${i.qty}`).join(', ')}</strong>${o.shipping||''} shipping</div>
-    </div>
-    <div class="order-row-v2-actions">
-      <select class="status-select" onchange="updateOrderStatus('${o.ref}',this.value)">
-        <option value="pending" ${o.status==='pending'?'selected':''}>Pending</option>
-        <option value="paid" ${o.status==='paid'?'selected':''}>Paid</option>
-        <option value="shipped" ${o.status==='shipped'?'selected':''}>Shipped</option>
-        <option value="fulfilled" ${o.status==='fulfilled'?'selected':''}>Fulfilled</option>
-        <option value="cancelled" ${o.status==='cancelled'?'selected':''}>Cancelled</option>
-      </select>
-      <input class="tracking-input" placeholder="Tracking number..." value="${o.tracking||''}" onchange="updateTracking('${o.ref}',this.value)">
-      <button class="btn-save-sm" onclick="saveOrderRow('${o.ref}',this)">Save</button>
-    </div>
-  </div>`;
-  el.innerHTML=orders.map(renderOrder).join('');
-  if(recentEl) recentEl.innerHTML=orders.slice(0,5).map(renderOrder).join('');
-}
-function updateOrderStatus(ref,status){
-  const orders=loadOrders();
-  const o=orders.find(x=>x.ref===ref);
-  if(o) o.status=status;
-  saveOrders(orders);
-}
-function updateTracking(ref,tracking){
-  const orders=loadOrders();
-  const o=orders.find(x=>x.ref===ref);
-  if(o) o.tracking=tracking;
-  saveOrders(orders);
-}
-function saveOrderRow(ref,btn){
-  saveOrders(loadOrders());
-  showToast('✓','Order updated','toast-green');
-  renderAdminStats();
-}
 
-// ── CONTENT / BANNER ──
-function loadContentSettings(){
-  const s=JSON.parse(localStorage.getItem('asanti_content')||'{}');
-  const bannerEl=document.getElementById('bannerText');
-  const bannerToggle=document.getElementById('bannerToggle');
-  const bannerLabel=document.getElementById('bannerToggleLabel');
-  if(bannerEl) bannerEl.value=s.bannerText||'';
-  const on=!!s.bannerOn;
-  if(bannerToggle) bannerToggle.className='toggle-track'+(on?' on':'');
-  if(bannerLabel) bannerLabel.textContent=on?'Banner On':'Banner Off';
-  updateBannerPreview();
-  applyBanner(s);
-  // Stats
-  const statSuits=document.getElementById('statSuits');
-  const statCards=document.getElementById('statCards');
-  const statPlayers=document.getElementById('statPlayers');
-  const statAges=document.getElementById('statAges');
-  if(statSuits) statSuits.value=s.statSuits||'3';
-  if(statCards) statCards.value=s.statCards||'48';
-  if(statPlayers) statPlayers.value=s.statPlayers||'2–4';
-  if(statAges) statAges.value=s.statAges||'12+';
-}
-function updateBannerPreview(){
-  const text=document.getElementById('bannerText')?.value||'';
-  const p=document.getElementById('bannerPreview');
-  if(p) p.textContent=text||'Banner preview will appear here';
-}
-function toggleBanner(){
-  const s=JSON.parse(localStorage.getItem('asanti_content')||'{}');
-  s.bannerOn=!s.bannerOn;
-  localStorage.setItem('asanti_content',JSON.stringify(s));
-  loadContentSettings();
-}
-function saveBanner(){
-  const s=JSON.parse(localStorage.getItem('asanti_content')||'{}');
-  s.bannerText=document.getElementById('bannerText').value.trim();
-  localStorage.setItem('asanti_content',JSON.stringify(s));
-  applyBanner(s);
-  showToast('✓','Banner saved','toast-green');
-}
-function applyBanner(s){
-  const banner=document.getElementById('siteBanner');
-  const textEl=document.getElementById('siteBannerText');
-  if(!banner||!textEl) return;
-  if(s.bannerOn&&s.bannerText){
-    textEl.textContent=s.bannerText;
-    banner.classList.add('show');
-  } else {
-    banner.classList.remove('show');
+  if (!email) {
+    toast("Enter email");
+    return;
   }
-}
-function saveHeroStats(){
-  const s=JSON.parse(localStorage.getItem('asanti_content')||'{}');
-  s.statSuits=document.getElementById('statSuits').value;
-  s.statCards=document.getElementById('statCards').value;
-  s.statPlayers=document.getElementById('statPlayers').value;
-  s.statAges=document.getElementById('statAges').value;
-  localStorage.setItem('asanti_content',JSON.stringify(s));
-  // Apply live to page
-  const stats=document.querySelectorAll('.hero-stat-num');
-  const labels=['Suits','Cards','Players','Ages'];
-  const vals=[s.statSuits,s.statCards,s.statPlayers,s.statAges];
-  document.querySelectorAll('.hero-stat').forEach((el,i)=>{
-    const num=el.querySelector('.hero-stat-num');
-    if(num&&vals[i]) num.textContent=vals[i];
+
+  const amount = Math.round(total() * 100);
+
+  const handler = PaystackPop.setup({
+    key: PAYSTACK_PUBLIC_KEY,
+    email,
+    amount,
+    currency: "GHS",
+
+    callback: function (res) {
+      toast("Payment successful");
+
+      cart = [];
+      saveCart();
+    },
+
+    onClose: function () {
+      console.log("Checkout closed");
+    }
   });
-  showToast('✓','Stats updated','toast-green');
+
+  handler.openIframe();
 }
 
-// ── DISCOUNTS ──
-function loadDiscounts(){try{return JSON.parse(localStorage.getItem('asanti_discounts'))||[];}catch{return[];}}
-function saveDiscounts(d){localStorage.setItem('asanti_discounts',JSON.stringify(d));}
-function addDiscount(){
-  const code=document.getElementById('dcCode').value.trim().toUpperCase();
-  const type=document.getElementById('dcType').value;
-  const value=parseFloat(document.getElementById('dcValue').value)||0;
-  if(!code||!value){showToast('⚠','Enter a code and value','toast-red');return;}
-  const discounts=loadDiscounts();
-  if(discounts.find(d=>d.code===code)){showToast('⚠','Code already exists','toast-red');return;}
-  discounts.push({code,type,value,active:true});
-  saveDiscounts(discounts);
-  document.getElementById('dcCode').value='';
-  document.getElementById('dcValue').value='';
-  renderDiscounts();
-  showToast('✓',`Code ${code} added`,'toast-green');
-}
-function deleteDiscount(code){
-  saveDiscounts(loadDiscounts().filter(d=>d.code!==code));
-  renderDiscounts();
-  showToast('✓','Code removed','toast-green');
-}
-function renderDiscounts(){
-  const el=document.getElementById('discountList');
-  if(!el) return;
-  const discounts=loadDiscounts();
-  if(!discounts.length){el.innerHTML='<div class="admin-empty">No discount codes yet</div>';return;}
-  el.innerHTML=discounts.map(d=>`<div class="discount-row">
-    <div class="discount-code">${d.code}</div>
-    <div class="discount-details">${d.type==='percent'?d.value+'% off':'GH₵ '+d.value+' off'}</div>
-    <button class="btn-del-sm" onclick="deleteDiscount('${d.code}')">Remove</button>
-  </div>`).join('');
-}
-// Apply discount at checkout
-function applyDiscountCode(code){
-  const discounts=loadDiscounts();
-  const d=discounts.find(x=>x.code===code.toUpperCase()&&x.active!==false);
-  return d||null;
+// ======================================================
+// TOAST
+// ======================================================
+function toast(msg) {
+  const wrap = document.getElementById("toastWrap");
+  if (!wrap) return;
+
+  const div = document.createElement("div");
+  div.className = "toast";
+  div.textContent = msg;
+
+  wrap.appendChild(div);
+
+  setTimeout(() => div.remove(), 2500);
 }
 
-// ── SETTINGS ──
-async function changeAdminPassword(){
-  const current=document.getElementById('pwCurrent').value;
-  const newPw=document.getElementById('pwNew').value;
-  const confirm=document.getElementById('pwConfirm').value;
-  if(!newPw||newPw.length<6){showToast('⚠','New password must be at least 6 characters','toast-red');return;}
-  if(newPw!==confirm){showToast('⚠','Passwords do not match','toast-red');return;}
-  try {
-    const token = localStorage.getItem('asanti_admin_token');
-    await apiFetch('/api/admin/change-password', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ current_password: current, new_password: newPw }),
-    });
-    document.getElementById('pwCurrent').value='';
-    document.getElementById('pwNew').value='';
-    document.getElementById('pwConfirm').value='';
-    showToast('✓','Password updated','toast-green');
-  } catch(err) {
-    showToast('✕','Password change failed: ' + err.message, 'toast-red');
-  }
-}
-function resetProducts(){
-  if(!confirm('Reset all products to defaults? Custom products and images will be lost.')) return;
-  localStorage.removeItem('asanti_products');
-  renderAdmin();
-  renderStoreProducts();
-  showToast('✓','Products reset to defaults','toast-green');
-}
-function clearOrders(){
-  if(!confirm('Delete ALL orders? This cannot be undone.')) return;
-  localStorage.removeItem('asanti_orders');
-  renderAdmin();
-  showToast('✓','Orders cleared','toast-green');
-}
-function exportOrders(){
-  const orders=loadOrders();
-  if(!orders.length){showToast('!','No orders to export','toast-red');return;}
-  const header=['Ref','Date','Name','Email','Phone','Address','Shipping','Tracking','Items','Subtotal','Shipping Cost','Total','Status'];
-  const rows=orders.map(o=>[
-    o.ref,new Date(o.date).toLocaleDateString(),o.name,o.email,o.phone||'',o.address||'',
-    o.shipping,o.tracking||'',o.items.map(i=>`${i.name} x${i.qty}`).join('; '),
-    o.subtotal,o.shippingCost||0,o.total,o.status
-  ]);
   const csv=[header,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
   const a=document.createElement('a');
   a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
