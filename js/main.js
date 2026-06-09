@@ -8,14 +8,6 @@ const IMG_AHENNIE = "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZ
 const API_BASE = 'https://asanticards-production.up.railway.app';
 const PAYSTACK_PUBLIC_KEY = 'pk_live_ec1ec560fc23b6f40264e23c7782d27fad86171b';
 let LIVE_SHIPPING_METHODS = []; // This will hold your live rows from Supabase
-let state = {
-  cart: JSON.parse(localStorage.getItem("asa_cart")) || [],
-  shipping: {
-    method: null,
-    cost: 0,
-    label: "Standard"
-  }
-};
 
 // ── API helpers ──
 async function apiFetch(path, options = {}) {
