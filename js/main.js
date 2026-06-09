@@ -226,7 +226,7 @@ function renderStoreProducts(){
         ${p.desc?`<div class="product-subtitle">${p.desc}</div>`:''}
         <div class="product-price-row">
           <div class="product-price">GH₵ ${parseFloat(p.price).toLocaleString('en-GH',{minimumFractionDigits:0})}</div>
-          <button class="btn ${soldOut?'btn-outline':'btn-gold'} btn-sm" ${soldOut?'disabled':''} onclick="addToCart('${p.id}','${p.name.replace(/'/g,&quot;\\'&quot;)}',${parseFloat(p.price)},1)">
+          <button class="btn ${soldOut?'btn-outline':'btn-gold'} btn-sm" ${soldOut?'disabled':''} onclick="addToCart('${p.id}','${p.name.replace(/[`'"]/g,'')}',${parseFloat(p.price)},1)">
             ${soldOut?'Out of Stock':'Add to Cart'}
           </button>
         </div>
