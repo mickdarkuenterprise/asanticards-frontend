@@ -683,7 +683,7 @@ function getCheckoutFormHTML(){
         </div>
       </div>
       <div class="co-section-title">Order Summary</div>
-      <div class="co-order-summary"><div id="coOrderLines"></div><div class="co-order-line"><span>Shipping</span><span id="coShippingLine">Free</span></div><div class="co-order-line total"><span>Total</span><span id="coTotal">GH₵ 0</span></div></div>
+      <div class="co-order-summary"><div id="coOrderLines"></div><div class="co-order-line"><span>Shipping</span><span id="coShippingLine">GH₵ 50</span></div><div class="co-order-line total"><span>Total</span><span id="coTotal">GH₵ 0</span></div></div>
       <button class="paystack-btn" id="paystackBtn" onclick="initiatePaystack()"><span>Pay Securely</span><span class="paystack-logo">via PAYSTACK</span></button>
       <p style="grid-column:1/-1;text-align:center;font-size:0.72rem;color:rgba(233,208,162,0.25);margin-top:-6px">256-bit SSL encryption · Your data is always protected</p>
     </div>
