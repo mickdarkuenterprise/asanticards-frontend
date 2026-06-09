@@ -661,9 +661,9 @@ function getCheckoutFormHTML(){
       </div>
       <div class="co-section-title">Shipping Method</div>
       <div class="shipping-options">
-        <div class="ship-opt selected" id="ship_standard" onclick="selectShipping('standard',0)"><div class="ship-opt-name">Standard</div><div class="ship-opt-days">3–5 business days</div><div class="ship-opt-price" id="ship_standard_price">${cartSubtotal()>=200?'Free':'GH₵ 10'}</div></div>
-        <div class="ship-opt" id="ship_express" onclick="selectShipping('express',30)"><div class="ship-opt-name">Express</div><div class="ship-opt-days">1–2 business days</div><div class="ship-opt-price">GH₵ 30</div></div>
-        <div class="ship-opt" id="ship_diaspora" onclick="selectShipping('diaspora',80)"><div class="ship-opt-name">Diaspora</div><div class="ship-opt-days">7–14 business days</div><div class="ship-opt-price">GH₵ 80</div></div>
+        <div class="ship-opt selected" id="ship_standard" onclick="selectShipping('standard',0)"><div class="ship-opt-name">Standard</div><div class="ship-opt-days">3–5 business days</div><div class="ship-opt-price" id="ship_standard_price">${cartSubtotal()>=200?'Free':'GH₵ 50'}</div></div>
+        <div class="ship-opt" id="ship_express" onclick="selectShipping('express',30)"><div class="ship-opt-name">Express</div><div class="ship-opt-days">1–2 business days</div><div class="ship-opt-price">GH₵ 80</div></div>
+        <div class="ship-opt" id="ship_diaspora" onclick="selectShipping('diaspora',80)"><div class="ship-opt-name">Diaspora</div><div class="ship-opt-days">7–14 business days</div><div class="ship-opt-price">GH₵ 200</div></div>
       </div>
       <div class="co-section-title">Order Summary</div>
       <div class="co-order-summary"><div id="coOrderLines"></div><div class="co-order-line"><span>Shipping</span><span id="coShippingLine">Free</span></div><div class="co-order-line total"><span>Total</span><span id="coTotal">GH₵ 0</span></div></div>
