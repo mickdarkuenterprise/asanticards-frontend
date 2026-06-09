@@ -591,7 +591,6 @@ async function fetchShippingTiersFromAPI() {
     }).join('');
 
     updateCartUI();
-    updateCheckoutSummary();
 
   } catch (err) {
     console.warn('Backend shipping endpoint missing or down. Loading safety fallbacks:', err.message);
@@ -609,7 +608,6 @@ async function fetchShippingTiersFromAPI() {
       </div>
     `;
     selectShipping('standard', 50);
-    updateCheckoutSummary();
   }
 }
 
@@ -638,6 +636,7 @@ function openCheckout(){
   if(cart.length===0){ showToast('!','Your cart is empty','toast-red'); return; }
   closeCart();
   document.getElementById('checkoutContent').innerHTML = getCheckoutFormHTML();
+  updateCheckoutSummary();
   fetchShippingTiersFromAPI();
   document.getElementById('checkoutOverlay').classList.add('open');
   document.getElementById('checkoutModalTitle').textContent = 'Checkout';
