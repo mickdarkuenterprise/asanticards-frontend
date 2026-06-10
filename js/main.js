@@ -201,8 +201,8 @@ function switchTab(btn,panelId){
 }
 let qty=1;
 function changeQty(d){qty=Math.max(1,qty+d);document.getElementById('qtyNum').textContent=qty}
-function openMobile(){document.getElementById('mobileMenu').classList.add('open')}
-function closeMobile(){document.getElementById('mobileMenu').classList.remove('open')}
+function openMobile(){document.getElementById('mobileMenu').classList.add('open');var t=document.querySelector('.nav-toggle');if(t)t.style.display='none';}
+function closeMobile(){document.getElementById('mobileMenu').classList.remove('open');var t=document.querySelector('.nav-toggle');if(t)t.style.display='flex';}
 function renderStoreProducts(){
   const grid = document.getElementById('productsGrid');
   if(!grid) return;
@@ -226,7 +226,7 @@ function renderStoreProducts(){
         ${p.desc?`<div class="product-subtitle">${p.desc}</div>`:''}
         <div class="product-price-row">
           <div class="product-price">GH₵ ${parseFloat(p.price).toLocaleString('en-GH',{minimumFractionDigits:0})}</div>
-          <button class="btn ${soldOut?'btn-outline':'btn-gold'} btn-sm" ${soldOut?'disabled':''} onclick="addToCart('${p.id}','${p.name.replace(/'/g,"\\'")}',${parseFloat(p.price)},1)">
+          <button class="btn ${soldOut?'btn-outline':'btn-gold'} btn-sm" ${soldOut?'disabled':''} onclick="addToCart('${p.id}','${p.name.replace(/'/g,&quot;\\'&quot;)}',${parseFloat(p.price)},1)">
             ${soldOut?'Out of Stock':'Add to Cart'}
           </button>
         </div>
