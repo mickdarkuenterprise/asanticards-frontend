@@ -201,8 +201,8 @@ function switchTab(btn,panelId){
 }
 let qty=1;
 function changeQty(d){qty=Math.max(1,qty+d);document.getElementById('qtyNum').textContent=qty}
-function openMobile(){document.getElementById('mobileMenu').classList.add('open')}
-function closeMobile(){document.getElementById('mobileMenu').classList.remove('open')}
+function openMobile(){document.getElementById('mobileMenu').classList.add('open');var t=document.querySelector('.nav-toggle');if(t)t.style.display='none';}
+function closeMobile(){document.getElementById('mobileMenu').classList.remove('open');var t=document.querySelector('.nav-toggle');if(t)t.style.display='flex';}
 function renderStoreProducts(){
   const grid = document.getElementById('productsGrid');
   if(!grid) return;
