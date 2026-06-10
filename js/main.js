@@ -202,18 +202,37 @@ function switchTab(btn,panelId){
 let qty=1;
 function changeQty(d){qty=Math.max(1,qty+d);document.getElementById('qtyNum').textContent=qty}
 function openMobile() {
+  // Open the mobile menu
   document.getElementById('mobileMenu').classList.add('open');
-  var t = document.querySelector('.nav-toggle');
-  if(t) t.style.display = 'none';
-  var c = document.querySelector('.cart-nav-btn');
-  if(c) c.style.display = 'none';   // ← hides the cart icon
+
+  // Get the hamburger toggle button
+  var toggleBtn = document.querySelector('.nav-toggle');
+  if (toggleBtn) {
+    // Change its icon to a close (X) symbol
+    toggleBtn.innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+    // Keep the button visible (do NOT hide it)
+    toggleBtn.style.display = 'flex';
+  }
+
+  // Hide the cart button
+  var cartBtn = document.querySelector('.cart-nav-btn');
+  if (cartBtn) cartBtn.style.display = 'none';
 }
 function closeMobile() {
+  // Close the mobile menu
   document.getElementById('mobileMenu').classList.remove('open');
-  var t = document.querySelector('.nav-toggle');
-  if(t) t.style.display = 'flex';
-  var c = document.querySelector('.cart-nav-btn');
-  if(c) c.style.display = 'flex';   // ← shows the cart icon again
+
+  // Get the toggle button
+  var toggleBtn = document.querySelector('.nav-toggle');
+  if (toggleBtn) {
+    // Change it back to hamburger icon
+    toggleBtn.innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>`;
+    toggleBtn.style.display = 'flex';
+  }
+
+  // Show the cart button again
+  var cartBtn = document.querySelector('.cart-nav-btn');
+  if (cartBtn) cartBtn.style.display = 'flex';
 }
 function renderStoreProducts(){
   const grid = document.getElementById('productsGrid');
