@@ -1014,7 +1014,6 @@ function renderAdmin(){
   loadContentSettings();
 }
 
-
 // ── STATS ──
 function renderAdminStats(){
   const orders=loadOrders(), products=loadProducts();
