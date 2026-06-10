@@ -14,12 +14,12 @@
 
 <!-- MOBILE MENU -->
 <div class="mobile-menu" id="mobileMenu">
-  <button class="mobile-close" onclick="closeMobile()">✕</button>
-  <a href="index.html" onclick="closeMobile()">Home</a>
-  <a href="rules.html" onclick="closeMobile()">Game Play</a>
-  <a href="store.html" onclick="closeMobile()">Store</a>
-  <a href="about.html" onclick="closeMobile()">About</a>
-  <a href="contact.html" onclick="closeMobile()">Contact</a>
+  <button class="mobile-close" onclick="toggleMobile()">✕</button>
+  <a href="index.html" onclick="toggleMobile()">Home</a>
+  <a href="rules.html" onclick="toggleMobile()">Game Play</a>
+  <a href="store.html" onclick="toggleMobile()">Store</a>
+  <a href="about.html" onclick="toggleMobile()">About</a>
+  <a href="contact.html" onclick="toggleMobile()">Contact</a>
 </div>
 
 <!-- NAV -->
@@ -41,7 +41,7 @@
       <span class="cart-badge" id="cartBadge">0</span>
     </button>
   </div>
-  <button class="nav-toggle" onclick="openMobile()" aria-label="Menu"><span></span><span></span><span></span></button>
+  <button class="nav-toggle" onclick="toggleMobile()" aria-label="Menu"><span></span><span></span><span></span></button>
 </nav>
 
 <!-- ═══════════════════════ HOME ═══════════════════════ -->
