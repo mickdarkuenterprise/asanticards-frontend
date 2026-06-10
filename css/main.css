@@ -45,7 +45,7 @@ nav.scrolled{background:rgba(8,2,1,0.94);backdrop-filter:blur(24px);padding:13px
 .mobile-menu.open{transform:none}
 .mobile-menu a{color:var(--cream);text-decoration:none;font-family:'Cinzel',serif;font-size:1.15rem;letter-spacing:0.15em;transition:color 0.3s}
 .mobile-menu a:hover{color:var(--gold)}
-.mobile-close{position:absolute;top:20px;right:5%;background:none;border:none;color:rgba(233,208,162,0.6);font-size:1.4rem;cursor:pointer;font-family:'Cinzel',serif}
+.mobile-close{position:absolute;top:20px;right:5%;background:none;border:none;color:rgba(233,208,162,0.6);font-size:1.4rem;cursor:pointer;font-family:'Cinzel',serif;z-index:201}
 
 /* PAGE SECTIONS */
 .page-section{display:block}
