@@ -201,31 +201,39 @@ function switchTab(btn,panelId){
 }
 let qty=1;
 function changeQty(d){qty=Math.max(1,qty+d);document.getElementById('qtyNum').textContent=qty}
-function toggleMobile() {
-  var menu = document.getElementById('mobileMenu');
+function openMobile() {
+  // Open the menu
+  document.getElementById('mobileMenu').classList.add('open');
+  
   var toggleBtn = document.querySelector('.nav-toggle');
   var cartBtn = document.querySelector('.cart-nav-btn');
-  var isOpen = menu.classList.contains('open');
-
-  if (isOpen) {
-    // Close the menu
-    menu.classList.remove('open');
-    if (toggleBtn) {
-      // Change back to hamburger icon
-      toggleBtn.innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>`;
-      toggleBtn.style.display = 'flex';
-    }
-    if (cartBtn) cartBtn.style.display = 'flex';
-  } else {
-    // Open the menu
-    menu.classList.add('open');
-    if (toggleBtn) {
-      // Change to close (X) icon
-      toggleBtn.innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
-      toggleBtn.style.display = 'flex';
-    }
-    if (cartBtn) cartBtn.style.display = 'none';
+  
+  if (toggleBtn) {
+    // Change hamburger to X (close icon)
+    toggleBtn.innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+    // Keep the button visible (do NOT hide it)
+    toggleBtn.style.display = 'flex';
   }
+  
+  // Hide the cart button
+  if (cartBtn) cartBtn.style.display = 'none';
+}
+
+function closeMobile() {
+  // Close the menu
+  document.getElementById('mobileMenu').classList.remove('open');
+  
+  var toggleBtn = document.querySelector('.nav-toggle');
+  var cartBtn = document.querySelector('.cart-nav-btn');
+  
+  if (toggleBtn) {
+    // Change back to hamburger icon
+    toggleBtn.innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>`;
+    toggleBtn.style.display = 'flex';
+  }
+  
+  // Show the cart button again
+  if (cartBtn) cartBtn.style.display = 'flex';
 }
 function renderStoreProducts(){
   const grid = document.getElementById('productsGrid');
