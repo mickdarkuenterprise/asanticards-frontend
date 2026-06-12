@@ -163,7 +163,16 @@ async function submitContact(name, email, message) {
   }
 }
 
-let cart = [];
+let cart = (function(){
+  try {
+    return JSON.parse(localStorage.getItem('asanti_cart') || '[]');
+  } catch {
+    return [];
+  }
+})();
+function saveCart(){
+  try { localStorage.setItem('asanti_cart', JSON.stringify(cart)); } catch {}
+}
 let shippingTiers = {}; // id -> { price, name } loaded from backend
 let shippingCost = 0;
 let shippingMethod = 'standard';
@@ -210,20 +219,12 @@ function toggleMobile() {
   if (isOpen) {
     // Close the menu
     menu.classList.remove('open');
-    if (toggleBtn) {
-      // Change back to hamburger icon
-      toggleBtn.innerHTML = `<svg pointer-events="none" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><line x1="3" y1="12" x2="21" y2="12"/>...`;
-      toggleBtn.style.display = 'flex';
-    }
-    if (cartBtn) cartBtn.style.display = 'flex';
+    if (toggleBtn) toggleBtn.classList.remove('active');
+    if (cartBtn) cartBtn.style.display = '';
   } else {
     // Open the menu
     menu.classList.add('open');
-    if (toggleBtn) {
-      // Change to close (X) icon
-      toggleBtn.innerHTML = `<svg pointer-events="none" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><line x1="18" y1="6" x2="6" y2="18"/>...`;
-      toggleBtn.style.display = 'flex';
-    }
+    if (toggleBtn) toggleBtn.classList.add('active');
     if (cartBtn) cartBtn.style.display = 'none';
   }
 }
@@ -462,6 +463,7 @@ function cartSubtotal(){
 }
 
 function updateCartUI(){
+  saveCart();
   // Support both item.qty or item.quantity safely to prevent NaN errors
   const count = cart.reduce((sum, item) => {
     return sum + (item.qty || item.quantity || 0);
@@ -899,6 +901,7 @@ function onPaymentSuccess(response, customer){
   // Clear cart
   const orderRef = customer.ref;
   cart = [];
+  localStorage.removeItem('asanti_cart');
   updateCartUI();
 
   // Show success modal overlay contents dynamically
