@@ -12,10 +12,24 @@ const PAYSTACK_PUBLIC_KEY = 'pk_live_ec1ec560fc23b6f40264e23c7782d27fad86171b';
 // ── API helpers ──
 async function apiFetch(path, options = {}) {
   const res = await fetch(API_BASE + path, {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
     ...options,
+    // merged AFTER ...options so passing extra headers (e.g. Authorization) keeps Content-Type
+    headers: { 'Content-Type': 'application/json', ...options.headers },
   });
-  if (!res.ok) throw new Error(`API ${res.status}: ${path}`);
+  if (!res.ok) {
+    // Surface the server's own message (e.g. "Insufficient stock…") when there is one
+    let message = `API ${res.status}: ${path}`;
+    try {
+      const body = await res.json();
+      if (body.error) message = body.error;
+      else if (Array.isArray(body.errors) && body.errors.length) {
+        message = 'Please check: ' + [...new Set(body.errors.map(e => e.path))].join(', ');
+      }
+    } catch {}
+    const err = new Error(message);
+    err.status = res.status;
+    throw err;
+  }
   return res.json();
 }
 
@@ -101,7 +115,8 @@ async function fetchProductsFromAPI() {
 
     _productsCache = products;
     localStorage.setItem('asanti_products', JSON.stringify(products));
-    
+    syncCartWithProducts(products);
+
     if (document.getElementById('productsGrid')) renderStoreProducts();
     if (document.getElementById('adminProductList')) renderAdminProducts();
     updatePriceSpans(products);
@@ -172,6 +187,27 @@ let cart = (function(){
 })();
 function saveCart(){
   try { localStorage.setItem('asanti_cart', JSON.stringify(cart)); } catch {}
+}
+
+// A saved cart can hold old prices/names, or products that were removed.
+// Refresh it from the live catalogue so the totals shown match what is charged.
+function syncCartWithProducts(products){
+  const before = JSON.stringify(cart);
+  cart = cart
+    .map(item => {
+      const prod = products.find(p => String(p.id) === String(item.id) && p.active !== false);
+      return prod ? { ...item, name: prod.name, price: parseFloat(prod.price) } : null;
+    })
+    .filter(Boolean);
+  if (JSON.stringify(cart) !== before && document.getElementById('cartBadge')) updateCartUI();
+}
+
+// Shipping for the selected method — same rule as the server: standard is free from GH₵ 200
+const FREE_SHIPPING_THRESHOLD = 200;
+function currentShippingCost(){
+  const base = shippingTiers[shippingMethod];
+  if (base === undefined) return shippingCost;
+  return (shippingMethod === 'standard' && cartSubtotal() >= FREE_SHIPPING_THRESHOLD) ? 0 : base;
 }
 let shippingTiers = {}; // id -> { price, name } loaded from backend
 let shippingCost = 0;
@@ -516,9 +552,9 @@ function updateCartUI(){
   });
 
   const sub = cartSubtotal();
-  
-  // FIX 1: Removed the hardcoded conditional statement override. 
-  // It now purely respects whatever 'shippingCost' is loaded from your database (50, 80, 200)
+
+  // Recalculate on every cart change so free shipping appears/disappears as the subtotal crosses GH₵ 200
+  shippingCost = currentShippingCost();
   const actualShipping = shippingCost;
   const grandTotal = sub + actualShipping;
 
@@ -566,12 +602,10 @@ function closeCart(){
 // ══════════════════════════════════════════════════
 function selectShipping(method, cost) {
   shippingMethod = method;
-  const sub = cartSubtotal();
 
   // 1. Calculate cost using backend-loaded base price, with free-shipping threshold
-  const basePrice = shippingTiers[method] !== undefined ? shippingTiers[method] : cost;
-  const isFirstTier = Object.keys(shippingTiers)[0] === method;
-  shippingCost = (isFirstTier && sub >= 200) ? 0 : basePrice;
+  if (shippingTiers[method] === undefined) shippingTiers[method] = cost; // fallback tiles before the API loads
+  shippingCost = currentShippingCost();
 
   // Update the displayed price on the shipping option tile
   const priceEl = document.getElementById('ship_' + method + '_price');
@@ -763,140 +797,100 @@ async function initiatePaystack(){
   const phone = document.getElementById('co_phone')?.value?.trim();
   const addr  = document.getElementById('co_addr')?.value?.trim();
   const city  = document.getElementById('co_city')?.value?.trim();
+  const countrySel = document.getElementById('co_country');
+  const country = countrySel ? countrySel.options[countrySel.selectedIndex].text : '';
 
   if(!first||!last){ showToast('!','Please enter your name','toast-red'); return; }
   if(!email||!email.includes('@')){ showToast('!','Please enter a valid email','toast-red'); return; }
   if(!phone){ showToast('!','Please enter your phone number','toast-red'); return; }
   if(!addr||!city){ showToast('!','Please enter your delivery address','toast-red'); return; }
 
-  const btn = document.getElementById('paystackBtn');
-  btn.disabled = true; 
-  btn.innerHTML = '<span>Processing…</span>';
-
-  // Rely on your global pricing mechanics to capture cart sums securely
-  const currentSubtotal = cartSubtotal();
-  const currentDiscount = 0; // Discount feature removed
-  const totalAmount = Math.max(0, (currentSubtotal - currentDiscount) + shippingCost);
-
-  let paystackKey = PAYSTACK_PUBLIC_KEY;
-  let ref = 'ASANTI-' + Date.now() + '-' + Math.random().toString(36).substr(2,6).toUpperCase();
-
-  // Step 1: Create order on backend
-  try {
-    const orderPayload = {
-      customer_name: `${first} ${last}`,
-      email,
-      phone,
-      address: `${addr}, ${city}`,
-      shipping_method: shippingMethod,
-      // FIXED: Swapped 'i.qty' to match your cart's live structural key 'i.quantity'
-      items: cart.map(i => ({
-        product_id: i.id,
-        name: i.name,
-        qty: i.qty,
-        price: i.price
-      })),
-      subtotal: currentSubtotal,
-      shipping_cost: shippingCost,
-      total: totalAmount,
-    };
-    
-    const orderRes = await apiFetch('/api/orders', {
-      method: 'POST',
-      body: JSON.stringify(orderPayload),
-    });
-    if (orderRes.ref) ref = orderRes.ref;
-    if (orderRes.paystack_key) paystackKey = orderRes.paystack_key;
-  } catch (err) {
-    console.warn('Order pre-create failed, proceeding with client-side ref:', err.message);
-  }
-
-  const totalKobo = Math.round(totalAmount * 100); // Ensures clear integers for Pesewas conversions
-
   if(typeof PaystackPop === 'undefined'){
     showToast('!','Payment system not loaded - please refresh','toast-red');
-    btn.disabled = false;
-    btn.innerHTML = '<span>Pay Securely</span><span class="paystack-logo">via PAYSTACK</span>';
     return;
   }
+
+  const btn = document.getElementById('paystackBtn');
+  const resetBtn = () => {
+    btn.disabled = false;
+    btn.innerHTML = '<span>Pay Securely</span><span class="paystack-logo">via PAYSTACK</span>';
+  };
+  btn.disabled = true;
+  btn.innerHTML = '<span>Processing…</span>';
+
+  const deliveryAddress = [addr, city, country].filter(Boolean).join(', ');
+
+  // Step 1: Create the order on the backend. The server checks stock and
+  // calculates the total from its own prices — we charge exactly that amount.
+  // If this fails, stop: never take a payment without an order behind it.
+  let order;
   try {
-  const handler = PaystackPop.setup({
-    key: paystackKey,
-    email: email,
-    amount: totalKobo,
-    currency: 'GHS',
-    ref: ref,
-    firstname: first,
-    lastname: last,
-    phone: phone,
-    metadata: {
-      custom_fields: [
-        {display_name:'Customer Name', variable_name:'customer_name', value:`${first} ${last}`},
-        {display_name:'Delivery Address', variable_name:'address', value:`${addr}, ${city}`},
-        {display_name:'Shipping Method', variable_name:'shipping', value:shippingMethod},
-        {display_name:'Cart Items', variable_name:'cart', value: cart.map(i=>`${i.name} x${i.qty}`).join(', ')},
-      ]
-    },
-    onClose: function(){
-      btn.disabled = false;
-      btn.innerHTML = '<span>Pay Securely</span><span class="paystack-logo">via PAYSTACK</span>';
-      showToast('!','Payment cancelled','toast-red');
-    },
-    callback: function(response){
-      onPaymentSuccess(response, {first, last, email, phone, addr, city, ref});
-    }
-  });
+    order = await apiFetch('/api/orders', {
+      method: 'POST',
+      body: JSON.stringify({
+        customer_name: `${first} ${last}`,
+        customer_email: email,
+        customer_phone: phone,
+        delivery_address: deliveryAddress,
+        shipping_method: shippingMethod,
+        items: cart.map(i => ({ product_id: i.id, qty: Number(i.qty || i.quantity || 1) })),
+      }),
+    });
+  } catch (err) {
+    console.error('Order creation failed:', err.message);
+    showToast('!', err.status === 429 || err.status === 400 ? err.message : 'Could not start checkout — please try again', 'toast-red');
+    fetchProductsFromAPI(); // refresh stock/prices in case they changed
+    resetBtn();
+    return;
+  }
+
+  const ref = order.order_ref;
+
+  // Show the server's total in case it differs from the cart (e.g. a price changed)
+  const totalEl = document.getElementById('coTotal');
+  if (totalEl) totalEl.textContent = `GH₵ ${Number(order.total_ghs).toLocaleString()}`;
+
+  // Step 2: Open Paystack for the server-calculated amount
+  try {
+    const handler = PaystackPop.setup({
+      key: PAYSTACK_PUBLIC_KEY,
+      email: email,
+      amount: order.total_pesewas,
+      currency: 'GHS',
+      ref: ref,
+      firstname: first,
+      lastname: last,
+      phone: phone,
+      metadata: {
+        custom_fields: [
+          // order_ref is how the server's webhook finds this order — required
+          {display_name:'Order Ref', variable_name:'order_ref', value: ref},
+          {display_name:'Customer Name', variable_name:'customer_name', value:`${first} ${last}`},
+          {display_name:'Delivery Address', variable_name:'address', value: deliveryAddress},
+          {display_name:'Shipping Method', variable_name:'shipping', value:shippingMethod},
+          {display_name:'Cart Items', variable_name:'cart', value: cart.map(i=>`${i.name} x${i.qty}`).join(', ')},
+        ]
+      },
+      onClose: function(){
+        resetBtn();
+        showToast('!','Payment cancelled','toast-red');
+      },
+      callback: function(response){
+        onPaymentSuccess(response, {first, last, email, phone, addr, city, ref});
+      }
+    });
     handler.openIframe();
   } catch(err) {
     console.error('Paystack error:', err);
-    btn.disabled = false;
-    btn.innerHTML = '<span>Pay Securely</span><span class="paystack-logo">via PAYSTACK</span>';
+    resetBtn();
     showToast('!','Payment error - please try again','toast-red');
   }
 }
 
 
 function onPaymentSuccess(response, customer){
-  // Notify backend of payment (backup to webhook)
-  apiFetch('/api/payments/verify', {
-    method: 'POST',
-    body: JSON.stringify({ reference: response.reference }),
-  }).catch(() => {});
-
-  // Deduct stock locally (webhook will also do this on backend)
-  const products = loadProducts();
-  cart.forEach(item => {
-    const prod = products.find(p => p.id === item.id);
-    if (prod) { 
-    
-      prod.stock = Math.max(0, prod.stock - item.qty); 
-    }
-  });
-  saveProducts(products);
-
-  // Capture current pricing structure metrics securely including any active discounts
-  const currentSubtotal = cartSubtotal();
-  const currentDiscount = typeof getDiscountAmount === 'function' ? getDiscountAmount(currentSubtotal) : 0;
-  const finalCalculatedTotal = Math.max(0, (currentSubtotal - currentDiscount) + shippingCost);
-
-  // Save order locally
-  const orders = loadOrders();
-  orders.unshift({
-    ref: customer.ref,
-    paystackRef: response.reference,
-    name: `${customer.first} ${customer.last}`,
-    email: customer.email,
-    phone: customer.phone,
-    address: `${customer.addr}, ${customer.city}`,
-    shipping: shippingMethod,
-    items: [...cart],
-    subtotal: currentSubtotal,
-    shippingCost: shippingCost,
-    total: finalCalculatedTotal, // FIXED: Now securely saves the exact discounted total amount paid
-    status: 'paid',
-    date: new Date().toISOString(),
-  });
-  saveOrders(orders);
+  // The server's Paystack webhook confirms the order, deducts stock and
+  // sends the confirmation email — nothing to record in the browser.
 
   // Clear cart
   const orderRef = customer.ref;
@@ -1452,6 +1446,8 @@ async function handleContactSubmit(){
 // Secret admin access: type "admin" anywhere
 let adminKeyBuffer='';
 document.addEventListener('keypress',e=>{
+  // Ignore typing in form fields — otherwise a message containing "admin" (e.g. "badminton") opens the panel
+  if(e.target.closest && e.target.closest('input, textarea, select, [contenteditable]')) return;
   adminKeyBuffer+=e.key;
   if(adminKeyBuffer.includes('admin')){ adminKeyBuffer=''; openAdmin(); }
   if(adminKeyBuffer.length>10) adminKeyBuffer=adminKeyBuffer.slice(-5);
