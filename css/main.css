@@ -59,18 +59,18 @@ nav.scrolled{background:rgba(8,2,1,0.94);backdrop-filter:blur(24px);padding:13px
 .hero{min-height:100vh;position:relative;display:flex;align-items:center;background:radial-gradient(ellipse at 65% 45%,rgba(123,15,26,0.45) 0%,transparent 55%),radial-gradient(ellipse at 15% 75%,rgba(74,28,18,0.55) 0%,transparent 50%),linear-gradient(155deg,#0A0302 0%,#180608 40%,#0A0302 100%);overflow:hidden}
 .hero-inner{max-width:1200px;margin:0 auto;padding:120px 5% 80px;display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;width:100%}
 .hero-tag{display:inline-block;font-size:0.68rem;letter-spacing:0.3em;text-transform:uppercase;color:var(--gold);border:1px solid rgba(217,164,65,0.3);padding:6px 16px;border-radius:20px;margin-bottom:1.5rem;animation:fadeUp 0.7s ease both}
-.hero-h1{font-family:'Cinzel',serif;font-size:clamp(3.5rem,6.5vw,5.8rem);font-weight:900;line-height:0.93;color:#fff;animation:fadeUp 0.7s 0.08s ease both}
+.hero-h1{font-family:'Cinzel',serif;font-size:clamp(3.5rem,6.5vw,5.8rem);font-weight:900;line-height:0.93;color:#fff;animation:fadeUp 0.45s 0.04s ease both}
 .hero-h1 span{color:var(--gold);display:block}
-.hero-sub{font-family:'Cinzel',serif;font-size:clamp(0.82rem,1.4vw,1rem);color:var(--cream);letter-spacing:0.13em;margin:1rem 0 1.4rem;animation:fadeUp 0.7s 0.16s ease both}
-.hero-body{color:rgba(233,208,162,0.65);font-size:0.93rem;line-height:1.85;margin-bottom:2.2rem;max-width:420px;animation:fadeUp 0.7s 0.22s ease both}
-.hero-ctas{display:flex;gap:1rem;flex-wrap:wrap;animation:fadeUp 0.7s 0.3s ease both}
-.hero-stats{display:flex;gap:2rem;margin-top:2.5rem;animation:fadeUp 0.7s 0.38s ease both}
+.hero-sub{font-family:'Cinzel',serif;font-size:clamp(0.82rem,1.4vw,1rem);color:var(--cream);letter-spacing:0.13em;margin:1rem 0 1.4rem;animation:fadeUp 0.45s 0.08s ease both}
+.hero-body{color:rgba(233,208,162,0.65);font-size:0.93rem;line-height:1.85;margin-bottom:2.2rem;max-width:420px;animation:fadeUp 0.45s 0.11s ease both}
+.hero-ctas{display:flex;gap:1rem;flex-wrap:wrap;animation:fadeUp 0.45s 0.15s ease both}
+.hero-stats{display:flex;gap:2rem;margin-top:2.5rem;animation:fadeUp 0.45s 0.19s ease both}
 .hero-stat{text-align:center}
 .hero-stat-num{font-family:'Cinzel',serif;font-size:1.6rem;font-weight:700;color:var(--gold);display:block}
 .hero-stat-label{font-size:0.68rem;letter-spacing:0.18em;text-transform:uppercase;color:rgba(233,208,162,0.45)}
 
 /* HERO VISUAL */
-.hero-visual{display:flex;align-items:center;justify-content:center;animation:fadeUp 0.7s 0.25s ease both;position:relative}
+.hero-visual{display:flex;align-items:center;justify-content:center;animation:fadeUp 0.45s 0.12s ease both;position:relative}
 .card-stack{position:relative;width:340px;height:440px}
 .card-item{position:absolute;width:215px;height:305px;border-radius:16px;border:1.5px solid rgba(217,164,65,0.35);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Cinzel',serif;transition:transform 0.4s ease;cursor:pointer}
 .card-item:nth-child(1){background:linear-gradient(145deg,#7B0F1A,#4A0910);top:65px;left:0;transform:rotate(-7deg);box-shadow:0 20px 60px rgba(0,0,0,0.55)}
@@ -116,11 +116,11 @@ section{position:relative;overflow:hidden}
 .gold-card{background:linear-gradient(145deg,rgba(217,164,65,0.08),rgba(168,124,40,0.05));border:1px solid rgba(217,164,65,0.22);border-radius:var(--r);padding:28px}
 
 /* REVEAL ANIMATION */
-.reveal{opacity:0;transform:translateY(28px);transition:opacity 0.65s ease,transform 0.65s ease}
+.reveal{opacity:0;transform:translateY(16px);transition:opacity 0.4s ease,transform 0.4s ease}
 .reveal.visible{opacity:1;transform:none}
-.reveal-left{opacity:0;transform:translateX(-30px);transition:opacity 0.65s ease,transform 0.65s ease}
+.reveal-left{opacity:0;transform:translateX(-18px);transition:opacity 0.4s ease,transform 0.4s ease}
 .reveal-left.visible{opacity:1;transform:none}
-.reveal-right{opacity:0;transform:translateX(30px);transition:opacity 0.65s ease,transform 0.65s ease}
+.reveal-right{opacity:0;transform:translateX(18px);transition:opacity 0.4s ease,transform 0.4s ease}
 .reveal-right.visible{opacity:1;transform:none}
 
 /* KEYFRAMES */
@@ -545,3 +545,9 @@ footer{background:#040201;border-top:1px solid rgba(217,164,65,0.08);padding:60p
 .toast-red .toast-icon{background:rgba(123,15,26,0.3);color:#e87a7a}
 
 .nav-logo img,.story-symbol img,.mini-card img,.power-card img,.product-box-main img,.footer-brand img,.suit-icon img,.card-suit-icon img,.img-frame img{background:transparent}
+
+/* Respect "reduce motion" settings: show everything without animating */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:0.01ms !important;animation-delay:0s !important;transition-duration:0.01ms !important}
+  .reveal,.reveal-left,.reveal-right{opacity:1;transform:none}
+}
