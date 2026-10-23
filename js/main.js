@@ -334,15 +334,6 @@ function initImages(){
     el.innerHTML=`<img src="${IMG_AHABAN}" alt="AHABAN ANIWA" style="width:110px;height:110px;object-fit:contain">`;
   });
 
-  // Mini cards — preserve label text
-  document.querySelectorAll('.mini-card').forEach(el=>{
-    const label=el.textContent.trim();
-    let src=null;
-    if(el.classList.contains('mc-gold')) src=IMG_AHENNIE;
-    else if(el.classList.contains('mc-red')) src=IMG_BAMMO;
-    else if(el.classList.contains('mc-green')) src=IMG_AHABAN;
-    if(src) el.innerHTML=`<img src="${src}" alt="${label}" style="width:32px;height:32px;object-fit:contain">${label}`;
-  });
 
   // Rules power cards
   document.querySelectorAll('.power-card').forEach(card=>{
@@ -890,3 +881,76 @@ async function handleContactSubmit(){
     showToast('!','Could not send — please email us directly','toast-red');
   }
 }
+
+// ══════════════════════════════════════════════════
+// CARD GALLERY & VIEWER (Game Play page)
+// ══════════════════════════════════════════════════
+const CARD_RANKS = [
+  ['na', 'Nana'], ['qm', 'Queen Mother'], ['dc', 'Divisional Chief'], ['sc', 'Sub-Chief'],
+  ['lc', 'Local Chief'], ['oy', 'Okyeame'], ['10', '10'], ['9', '9'], ['8', '8'], ['7', '7'], ['6', '6'], ['5', '5'],
+];
+const SUIT_NAMES = { gold: 'Gold (Ahennie)', red: 'Red (Bammɔ)', green: 'Green (Ahaban Aniwa)' };
+const DECK = {
+  gold:  CARD_RANKS.map(([r, n]) => ({ id: 'gold_' + r,  name: n, suit: SUIT_NAMES.gold })),
+  red:   CARD_RANKS.map(([r, n]) => ({ id: 'red_' + r,   name: n, suit: SUIT_NAMES.red })),
+  green: CARD_RANKS.map(([r, n]) => ({ id: 'green_' + r, name: n, suit: SUIT_NAMES.green })),
+  sacred: [
+    { id: 'fourth_gs',   name: 'Golden Stool', suit: 'Fourth suit' },
+    { id: 'fourth_ok_1', name: 'Okomfo',       suit: 'Fourth suit' },
+    { id: 'fourth_ok_2', name: 'Okomfo',       suit: 'Fourth suit' },
+    { id: 'back_design', name: 'Card back',    suit: '' },
+  ],
+};
+const ALL_CARDS = [...DECK.gold, ...DECK.red, ...DECK.green, ...DECK.sacred];
+let viewerList = ALL_CARDS, viewerIndex = 0;
+
+function showDeckSuit(suit, tab){
+  const grid = document.getElementById('deckGrid');
+  if (!grid) return;
+  document.querySelectorAll('.deck-tab').forEach(t => {
+    const on = t.dataset.suit === suit;
+    t.classList.toggle('active', on);
+    t.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  grid.innerHTML = DECK[suit].map(c =>
+    `<button type="button" class="real-card" onclick="openCardViewer('${c.id}','${suit}')" aria-label="View the ${c.name} card">` +
+    `<img src="images/cards/${c.id}-240.webp" width="240" height="336" loading="lazy" decoding="async" alt="${c.suit ? c.suit + ' ' : ''}${c.name} card">` +
+    `<span>${c.name}</span></button>`).join('');
+  const note = document.getElementById('deckNote');
+  if (note) note.style.display = suit === 'sacred' ? 'none' : '';
+}
+
+function openCardViewer(id, suit){
+  viewerList = suit && DECK[suit] ? DECK[suit] : ALL_CARDS;
+  viewerIndex = Math.max(0, viewerList.findIndex(c => c.id === id));
+  renderCardViewer();
+  const v = document.getElementById('cardViewer');
+  if (!v) return;
+  v.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  v.querySelector('.cv-close').focus();
+}
+function renderCardViewer(){
+  const c = viewerList[viewerIndex];
+  const img = document.getElementById('cardViewerImg');
+  img.src = `images/cards/${c.id}-600.webp`;
+  img.alt = `${c.suit ? c.suit + ' ' : ''}${c.name} card`;
+  document.getElementById('cardViewerCaption').textContent = c.suit ? `${c.name} · ${c.suit}` : c.name;
+}
+function stepCardViewer(delta){
+  viewerIndex = (viewerIndex + delta + viewerList.length) % viewerList.length;
+  renderCardViewer();
+}
+function closeCardViewer(){
+  const v = document.getElementById('cardViewer');
+  if (v) v.classList.remove('open');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => {
+  const v = document.getElementById('cardViewer');
+  if (!v || !v.classList.contains('open')) return;
+  if (e.key === 'Escape') closeCardViewer();
+  if (e.key === 'ArrowRight') stepCardViewer(1);
+  if (e.key === 'ArrowLeft') stepCardViewer(-1);
+});
+document.addEventListener('DOMContentLoaded', () => showDeckSuit('gold'));
