@@ -568,3 +568,7 @@ footer{background:#040201;border-top:1px solid rgba(217,164,65,0.08);padding:60p
   .cart-item-remove{min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center}
   .filter-btn,.gp-tab{min-height:44px}
 }
+
+/* Story-tab mini cards: show the suit symbol on a cream disc (like the real card face),
+   so the dark green and red symbols are visible on the dark card */
+.mini-card img{width:40px !important;height:40px !important;padding:5px;border-radius:50%;background:#F3E5C4;box-shadow:0 0 0 1px rgba(217,164,65,0.45);object-fit:contain}
