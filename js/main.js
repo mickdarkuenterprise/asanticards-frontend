@@ -898,7 +898,6 @@ const DECK = {
     { id: 'fourth_gs',   name: 'Golden Stool', suit: 'Fourth suit' },
     { id: 'fourth_ok_1', name: 'Okomfo',       suit: 'Fourth suit' },
     { id: 'fourth_ok_2', name: 'Okomfo',       suit: 'Fourth suit' },
-    { id: 'back_design', name: 'Card back',    suit: '' },
   ],
 };
 const ALL_CARDS = [...DECK.gold, ...DECK.red, ...DECK.green, ...DECK.sacred];
