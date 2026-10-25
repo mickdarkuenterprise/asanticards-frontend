@@ -290,6 +290,9 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('asanti_cache_version', CACHE_VERSION);
   }
 
+  // Keep the footer copyright year current
+  document.querySelectorAll('.footer-year').forEach(el => { el.textContent = new Date().getFullYear(); });
+
   // 3. Run animation and image initializers once
   initImages();
   observeReveal();
