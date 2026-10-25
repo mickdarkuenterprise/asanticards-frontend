@@ -175,8 +175,8 @@ section{position:relative;overflow:hidden}
 /* NEWSLETTER */
 .nl-wrap{max-width:580px;margin:0 auto;text-align:center;padding:90px 5%}
 .nl-form{display:flex;gap:10px;margin-top:1.8rem;flex-wrap:wrap}
-.nl-input{flex:1;min-width:200px;padding:13px 18px;background:rgba(255,255,255,0.04);border:1px solid rgba(217,164,65,0.22);border-radius:4px;color:var(--cream);font-size:0.88rem;font-family:'Inter',sans-serif;outline:none;transition:border-color 0.3s}
-.nl-input::placeholder{color:rgba(233,208,162,0.45)}
+.nl-input{flex:1;min-width:200px;padding:13px 18px;background:rgba(255,255,255,0.09);border:1px solid rgba(217,164,65,0.55);border-radius:4px;color:var(--cream);font-size:0.88rem;font-family:'Inter',sans-serif;outline:none;transition:border-color 0.3s}
+.nl-input::placeholder{color:rgba(233,208,162,0.7)}
 .nl-input:focus{border-color:var(--gold)}
 
 /* ─────────── STORY PAGE ─────────── */
@@ -606,3 +606,12 @@ footer{background:#040201;border-top:1px solid rgba(217,164,65,0.08);padding:60p
 /* Header: brand name beside the logo */
 .nav-logo-text{font-family:'Cinzel',serif;font-weight:700;font-size:1.1rem;letter-spacing:0.16em;color:var(--gold);margin-left:10px;white-space:nowrap;line-height:1}
 @media(max-width:400px){.nav-logo-text{font-size:0.95rem;letter-spacing:0.12em;margin-left:8px}}
+
+/* Footer newsletter signup */
+.footer-nl{margin-top:1.4rem;max-width:340px}
+.footer-nl-title{font-family:'Cinzel',serif;color:var(--gold);font-size:0.85rem;letter-spacing:0.12em;margin-bottom:8px}
+.footer-nl .nl-form{margin-top:0;flex-wrap:nowrap;gap:8px}
+.footer-nl .nl-input{min-width:0;padding:10px 12px;font-size:0.85rem}
+.footer-nl .btn{white-space:nowrap}
+/* Saving badge (e.g. Two-Box Bundle) */
+.badge-sale{background:#8eba80;color:#0f2a0a}

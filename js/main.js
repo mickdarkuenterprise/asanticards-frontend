@@ -165,12 +165,19 @@ function syncCartWithProducts(products){
 
 // Shipping for the selected method — same rule as the server: standard is free from GH₵ 200
 const FREE_SHIPPING_THRESHOLD = 200;
+function refreshShippingTilePrices(){
+  const el = document.getElementById('ship_standard_price');
+  if (!el) return;
+  const free = cartSubtotal() >= FREE_SHIPPING_THRESHOLD;
+  el.textContent = free ? 'Free' : `GH₵ ${Number(shippingTiers.standard).toLocaleString()}`;
+}
 function currentShippingCost(){
   const base = shippingTiers[shippingMethod];
   if (base === undefined) return shippingCost;
   return (shippingMethod === 'standard' && cartSubtotal() >= FREE_SHIPPING_THRESHOLD) ? 0 : base;
 }
-let shippingTiers = {}; // id -> { price, name } loaded from backend
+// Base price per shipping method; matches the server (lib/shipping.js) and is refreshed from the API when available
+let shippingTiers = { standard: 50, express: 80, diaspora: 200 };
 let shippingCost = 0;
 let shippingMethod = 'standard';
 
@@ -224,6 +231,13 @@ function toggleMobile() {
     if (cartBtn) cartBtn.style.display = 'none';
   }
 }
+// "Save GH₵60" on the Two-Box Bundle, worked out from the live prices
+function bundleSavingBadge(p){
+  if (p.id !== 'bundle2') return null;
+  const single = loadProducts().find(x => x.id === 'collectors');
+  const save = single ? Math.round(2 * parseFloat(single.price) - parseFloat(p.price)) : 0;
+  return save > 0 ? `Save GH₵${save}` : null;
+}
 function renderStoreProducts(){
   const grid = document.getElementById('productsGrid');
   if(!grid) return;
@@ -236,8 +250,9 @@ function renderStoreProducts(){
     const imgHtml = photo
       ? `<img src="${photo}" alt="${p.name.replace(/"/g,'&quot;')}" loading="lazy" width="800" height="533" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;border-radius:var(--r) var(--r) 0 0">`
       : `<div class="adinkra-dots"></div><div class="product-img-text"><span style="font-size:1.6rem;color:rgba(217,164,65,0.22);display:block">${p.name.split(' ').slice(0,2).join(' ')}</span></div>`;
-    const badgeCls = catBadgeClass[p.badge]||'badge-new';
-    const badgeHtml = p.badge ? `<span class="product-badge ${badgeCls}">${p.badge}</span>` : '';
+    const badge = p.badge || bundleSavingBadge(p);
+    const badgeCls = catBadgeClass[badge] || (/^save/i.test(badge || '') ? 'badge-sale' : 'badge-new');
+    const badgeHtml = badge ? `<span class="product-badge ${badgeCls}">${badge}</span>` : '';
     const soldOut = p.stock===0;
     return `<div class="product-card" data-cat="${p.category}">
       <div class="product-img" style="background:linear-gradient(145deg,#1A0709,#2E1009);position:relative">
@@ -480,6 +495,7 @@ function updateCartUI(){
 
   // Recalculate on every cart change so free shipping appears/disappears as the subtotal crosses GH₵ 200
   shippingCost = currentShippingCost();
+  refreshShippingTilePrices();
   const actualShipping = shippingCost;
   const grandTotal = sub + actualShipping;
 
@@ -627,6 +643,7 @@ function updateCheckoutSummary(){
   });
   lines.innerHTML = html;
   document.getElementById('coShippingLine').textContent = shippingCost===0 ? 'Free' : `GH₵ ${shippingCost}`;
+  refreshShippingTilePrices();
   const total = cartSubtotal() + shippingCost;
   document.getElementById('coTotal').textContent = `GH₵ ${total.toLocaleString()}`;
 }
@@ -664,21 +681,21 @@ function getCheckoutFormHTML(){
         <div class="ship-opt selected" id="ship_standard" onclick="selectShipping('standard', 50)">
           <div class="ship-opt-name">Standard</div>
           <div class="ship-opt-days">3–5 business days</div>
-          <div class="ship-opt-price">GH₵ 50</div>
+          <div class="ship-opt-price" id="ship_standard_price">GH₵ 50</div>
         </div>
 
         <!-- Express - GH₵ 80 -->
         <div class="ship-opt" id="ship_express" onclick="selectShipping('express', 80)">
           <div class="ship-opt-name">Express</div>
           <div class="ship-opt-days">1–2 business days</div>
-          <div class="ship-opt-price">GH₵ 80</div>
+          <div class="ship-opt-price" id="ship_express_price">GH₵ 80</div>
         </div>
 
         <!-- Diaspora - GH₵ 200 -->
         <div class="ship-opt" id="ship_diaspora" onclick="selectShipping('diaspora', 200)">
           <div class="ship-opt-name">Diaspora</div>
           <div class="ship-opt-days">7–14 business days</div>
-          <div class="ship-opt-price">GH₵ 200</div>
+          <div class="ship-opt-price" id="ship_diaspora_price">GH₵ 200</div>
         </div>
       </div>
       <div class="co-section-title">Order Summary</div>
@@ -852,8 +869,9 @@ function showToast(icon, msg, type='toast-gold'){
 
 // ══════════════════════════════════════════════════
 // ── Newsletter ──
-async function handleNewsletterSubmit(){
-  const input = document.getElementById('nlEmailInput');
+async function handleNewsletterSubmit(el){
+  const form = el && (el.closest ? el.closest('.nl-form') : null);
+  const input = (form && form.querySelector('.nl-input')) || document.getElementById('nlEmailInput');
   const email = input?.value?.trim();
   if(!email || !email.includes('@')){ showToast('!','Enter a valid email','toast-red'); return; }
   const ok = await subscribeNewsletter(email);
