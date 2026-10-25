@@ -630,3 +630,27 @@ footer{background:#040201;border-top:1px solid rgba(217,164,65,0.08);padding:60p
 .review-consent input{margin-top:3px;width:18px;height:18px;accent-color:var(--gold);flex-shrink:0}
 .review-submit{width:100%;padding:15px;letter-spacing:0.2em}
 @media(max-width:560px){.review-form-card{padding:22px}}
+
+/* Policy pages */
+.legal{max-width:760px;margin:0 auto;color:rgba(233,208,162,0.9);font-size:0.95rem;line-height:1.8}
+.legal h2{font-family:'Cinzel',serif;color:var(--gold);font-size:1.15rem;letter-spacing:0.04em;margin:2.2rem 0 0.7rem}
+.legal p{margin:0 0 1rem}
+.legal ul,.legal ol{margin:0 0 1rem;padding-left:1.4rem}
+.legal li{margin-bottom:0.45rem}
+.legal a{color:var(--gold);text-decoration:underline;text-underline-offset:2px}
+.legal strong{color:var(--cream)}
+.legal-updated{font-size:0.82rem;color:rgba(233,208,162,0.7);font-style:italic}
+/* Footer legal links */
+.footer-legal a{color:rgba(233,208,162,0.85);text-decoration:none}
+.footer-legal a:hover{color:var(--gold)}
+/* Store: returns tile is a link */
+a.ship-item-link{text-decoration:none;color:inherit}
+a.ship-item-link:hover{border-color:rgba(217,164,65,0.4)}
+/* Checkout agreement links */
+#checkoutContent p a{color:var(--gold)}
+/* Cookie consent banner */
+.cookie-banner{position:fixed;left:16px;right:16px;bottom:16px;z-index:650;max-width:720px;margin:0 auto;background:#140805;border:1px solid rgba(217,164,65,0.35);border-radius:12px;padding:16px 18px;box-shadow:0 12px 40px rgba(0,0,0,0.55);display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.cookie-banner p{flex:1;min-width:240px;margin:0;font-size:0.85rem;line-height:1.6;color:rgba(233,208,162,0.92)}
+.cookie-banner a{color:var(--gold)}
+.cookie-actions{display:flex;gap:10px;flex-shrink:0}
+@media(max-width:560px){.cookie-actions{width:100%}.cookie-actions .btn{flex:1}}

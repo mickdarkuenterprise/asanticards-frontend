@@ -13,7 +13,9 @@ const TIKTOK_PIXEL_ID = 'DBF8AFRC77U4SEFNLBV0';
 
 
 // ── Ad pixels (Meta + TikTok) ──
-(function loadAdPixels() {
+function loadAdPixels() {
+  if (window.__adPixelsLoaded) return; // only once per page, even if Accept is clicked again
+  window.__adPixelsLoaded = true;
   if (META_PIXEL_ID) {
     !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
     n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
@@ -30,7 +32,44 @@ const TIKTOK_PIXEL_ID = 'DBF8AFRC77U4SEFNLBV0';
       ttq.page();
     }(window, document, 'ttq');
   }
-})();
+}
+
+// ── Cookie consent ──
+// Ad pixels load only after the visitor chooses "Accept". The choice is remembered in this browser;
+// "Cookie settings" in the footer reopens the banner.
+const CONSENT_KEY = 'asanti_cookie_consent';
+function getCookieConsent() {
+  try { return localStorage.getItem(CONSENT_KEY); } catch { return null; }
+}
+function setCookieConsent(choice) {
+  const previous = getCookieConsent();
+  try { localStorage.setItem(CONSENT_KEY, choice); } catch {}
+  document.getElementById('cookieBanner')?.remove();
+  if (choice === 'granted') loadAdPixels();
+  // Pixels that already loaded can't be unloaded — reload so they are gone for this visit
+  else if (previous === 'granted') location.reload();
+}
+function showCookieBanner() {
+  if (document.getElementById('cookieBanner')) return;
+  const el = document.createElement('div');
+  el.id = 'cookieBanner';
+  el.className = 'cookie-banner';
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-label', 'Cookie choices');
+  el.innerHTML = `
+    <p>We use advertising cookies from Meta and TikTok to measure and improve our ads. They stay off unless you accept. Your cart is always saved. <a href="privacy.html#cookies">Learn more</a></p>
+    <div class="cookie-actions">
+      <button type="button" class="btn btn-outline btn-sm" onclick="setCookieConsent('denied')">Decline</button>
+      <button type="button" class="btn btn-gold btn-sm" onclick="setCookieConsent('granted')">Accept</button>
+    </div>`;
+  document.body.appendChild(el);
+}
+function openCookieSettings() { document.getElementById('cookieBanner')?.remove(); showCookieBanner(); }
+document.addEventListener('DOMContentLoaded', () => {
+  const consent = getCookieConsent();
+  if (consent === 'granted') loadAdPixels();
+  else if (consent !== 'denied') showCookieBanner();
+});
 
 // Send one shopping event to both pixels. Events: AddToCart, InitiateCheckout, Purchase.
 function trackAd(event, { value, ids = [], orderRef } = {}) {
@@ -759,7 +798,7 @@ function getCheckoutFormHTML(){
       <div class="co-section-title">Order Summary</div>
       <div class="co-order-summary"><div id="coOrderLines"></div><div class="co-order-line"><span>Shipping</span><span id="coShippingLine">GH₵ 50</span></div><div class="co-order-line total"><span>Total</span><span id="coTotal">GH₵ 0</span></div></div>
       <button class="paystack-btn" id="paystackBtn" onclick="initiatePaystack()"><span>Pay Securely</span><span class="paystack-logo">via PAYSTACK</span></button>
-      <p style="grid-column:1/-1;text-align:center;font-size:0.75rem;color:rgba(233,208,162,0.73);margin-top:-6px">256-bit SSL encryption · Your data is always protected</p>
+      <p style="grid-column:1/-1;text-align:center;font-size:0.75rem;color:rgba(233,208,162,0.73);margin-top:-6px">256-bit SSL encryption · Your data is always protected<br>By paying you agree to our <a href="terms.html" target="_blank">Terms</a> and <a href="returns.html" target="_blank">Returns Policy</a>.</p>
     </div>
   </div>`;
 }
