@@ -163,18 +163,15 @@ function syncCartWithProducts(products){
   if (JSON.stringify(cart) !== before && document.getElementById('cartBadge')) updateCartUI();
 }
 
-// Shipping for the selected method — same rule as the server: standard is free from GH₵ 200
-const FREE_SHIPPING_THRESHOLD = 200;
+// Shipping for the selected method — same as the server: every order pays the method's price (no free shipping)
 function refreshShippingTilePrices(){
   const el = document.getElementById('ship_standard_price');
-  if (!el) return;
-  const free = cartSubtotal() >= FREE_SHIPPING_THRESHOLD;
-  el.textContent = free ? 'Free' : `GH₵ ${Number(shippingTiers.standard).toLocaleString()}`;
+  if (el) el.textContent = `GH₵ ${Number(shippingTiers.standard).toLocaleString()}`;
 }
 function currentShippingCost(){
   const base = shippingTiers[shippingMethod];
   if (base === undefined) return shippingCost;
-  return (shippingMethod === 'standard' && cartSubtotal() >= FREE_SHIPPING_THRESHOLD) ? 0 : base;
+  return base;
 }
 // Base price per shipping method; matches the server (lib/shipping.js) and is refreshed from the API when available
 let shippingTiers = { standard: 50, express: 80, diaspora: 200 };
@@ -493,7 +490,7 @@ function updateCartUI(){
 
   const sub = cartSubtotal();
 
-  // Recalculate on every cart change so free shipping appears/disappears as the subtotal crosses GH₵ 200
+  // Recalculate on every cart change (e.g. after the shipping list loads)
   shippingCost = currentShippingCost();
   refreshShippingTilePrices();
   const actualShipping = shippingCost;
@@ -544,7 +541,7 @@ function closeCart(){
 function selectShipping(method, cost) {
   shippingMethod = method;
 
-  // 1. Calculate cost using backend-loaded base price, with free-shipping threshold
+  // 1. Calculate cost using the backend-loaded base price
   if (shippingTiers[method] === undefined) shippingTiers[method] = cost; // fallback tiles before the API loads
   shippingCost = currentShippingCost();
 
@@ -578,7 +575,7 @@ async function fetchShippingTiersFromAPI() {
     if (!tiers.length) throw new Error("No shipping profiles configured");
 
     // 2. Generate HTML items dynamically using actual rows from Supabase
-    // Store base prices keyed by tier ID so selectShipping can apply free-shipping logic
+    // Store base prices keyed by tier ID so selectShipping can price each method
     shippingTiers = {};
     tiers.forEach(tier => {
       shippingTiers[tier.id] = parseFloat(tier.price);
@@ -587,7 +584,7 @@ async function fetchShippingTiersFromAPI() {
     container.innerHTML = tiers.map((tier, index) => {
       const basePrice = parseFloat(tier.price);
       const sub = cartSubtotal();
-      const effectivePrice = (tier.id === tiers[0]?.id && sub >= 200) ? 0 : basePrice;
+      const effectivePrice = basePrice;
       const displayPrice = effectivePrice === 0 ? 'Free' : `GH₵ ${effectivePrice.toLocaleString()}`;
       const isSelectedClass = index === 0 ? 'selected' : '';
 

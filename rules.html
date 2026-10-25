@@ -28,7 +28,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@400;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://js.paystack.co/v1/inline.js" defer></script>
-<link rel="stylesheet" href="css/main.css?v=20261025e">
+<link rel="stylesheet" href="css/main.css?v=20261026">
 </head>
 <body>
 
@@ -542,7 +542,7 @@
     <div class="cart-subtotal"><span>Shipping</span><span id="cartShippingDisplay">Calculated at checkout</span></div>
     <div class="cart-total-row"><span>Total</span><span id="cartTotal">GH₵ 0</span></div>
     <button class="cart-checkout-btn" onclick="openCheckout()">Proceed to Checkout →</button>
-    <p style="font-size:0.75rem;color:rgba(233,208,162,0.73);text-align:center;margin-top:10px">Secure payment via Paystack ✦ Free shipping over GH₵ 200</p>
+    <p style="font-size:0.75rem;color:rgba(233,208,162,0.73);text-align:center;margin-top:10px">Secure payment via Paystack ✦ Delivery across Ghana &amp; worldwide</p>
   </div>
 </div>
 
@@ -581,7 +581,7 @@
             <div class="ship-opt selected" id="ship_standard" onclick="selectShipping('standard',0)">
               <div class="ship-opt-name">Standard</div>
               <div class="ship-opt-days">3–5 business days</div>
-              <div class="ship-opt-price" id="ship_standard_price">Free</div>
+              <div class="ship-opt-price" id="ship_standard_price">GH₵ 50</div>
             </div>
             <div class="ship-opt" id="ship_express" onclick="selectShipping('express',30)">
               <div class="ship-opt-name">Express</div>
@@ -598,7 +598,7 @@
           <div class="co-section-title">Order Summary</div>
           <div class="co-order-summary">
             <div id="coOrderLines"></div>
-            <div class="co-order-line"><span>Shipping</span><span id="coShippingLine">Free</span></div>
+            <div class="co-order-line"><span>Shipping</span><span id="coShippingLine">GH₵ 50</span></div>
             <div class="co-order-line total"><span>Total</span><span id="coTotal">GH₵ 0</span></div>
           </div>
 
@@ -627,5 +627,5 @@
 <!-- ═══════════ TOAST CONTAINER ═══════════ -->
 <div class="toast-wrap" id="toastWrap"></div>
 
-<script src="js/main.js?v=20261025e"></script>
+<script src="js/main.js?v=20261026"></script>
 </body>
