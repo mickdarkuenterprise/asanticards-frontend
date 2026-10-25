@@ -8,7 +8,7 @@ const IMG_AHENNIE = 'images/suit-ahennie.svg';
 const API_BASE = 'https://asanticards-production.up.railway.app';
 const PAYSTACK_PUBLIC_KEY = 'pk_live_ec1ec560fc23b6f40264e23c7782d27fad86171b';
 // Ad pixels — paste the IDs from Meta Events Manager and TikTok Ads Manager. Left empty, nothing loads.
-const META_PIXEL_ID = '';
+const META_PIXEL_ID = '2199470347661333';
 const TIKTOK_PIXEL_ID = '';
 
 
