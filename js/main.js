@@ -39,8 +39,8 @@ async function apiFetch(path, options = {}) {
 const PRODUCTS_DEFAULT = [
   {id:'collectors', name:"ASA NTI — Collector's Edition", price:350, category:'game',  stock:50, active:true,  sort_order:1},
   {id:'bundle2',    name:'Two-Box Bundle',                price:500, category:'bundle', stock:20, active:true,  sort_order:2},
-  {id:'tote',       name:'ASA NTI Tote Bag',              price:100, category:'merch',  stock:35, active:true,  sort_order:3},
-  {id:'poster',     name:'Three Suits Art Poster',        price:100, category:'merch',  stock:30, active:true,  sort_order:4},
+  {id:'tote',       name:'ASA NTI Tote Bag',              price:200, category:'merch',  stock:35, active:true,  sort_order:3},
+  {id:'poster',     name:'Three Suits Art Poster',        price:200, category:'merch',  stock:30, active:true,  sort_order:4},
   {id:'giftset',    name:'Premium Gift Set',              price:195, category:'bundle', stock:15, active:false, sort_order:5},
 ];
 
