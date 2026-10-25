@@ -321,9 +321,12 @@ function initImages(){
   document.querySelectorAll('.suit-img-bammo').forEach(img => img.src = IMG_BAMMO);
   document.querySelectorAll('.suit-img-ahaban').forEach(img => img.src = IMG_AHABAN);
 
-  // Nav logos
+  // Nav logos — the header shows the name beside the logo; the footer keeps the logo alone
   document.querySelectorAll('.nav-logo').forEach(el=>{
-    el.innerHTML=`<img src="${IMG_LOGO}" alt="ASA NTI" style="height:40px;width:auto;object-fit:contain;display:block">`;
+    const inHeader = !!el.closest('#mainNav');
+    el.innerHTML = inHeader
+      ? `<img src="${IMG_LOGO}" alt="" style="height:40px;width:auto;object-fit:contain;display:block"><span class="nav-logo-text">ASA NTI</span>`
+      : `<img src="${IMG_LOGO}" alt="ASA NTI" style="height:40px;width:auto;object-fit:contain;display:block">`;
   });
 
   // Story chapter symbols

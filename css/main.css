@@ -602,3 +602,7 @@ footer{background:#040201;border-top:1px solid rgba(217,164,65,0.08);padding:60p
   .cv-figure img{width:86vw;max-height:70vh}
   .deck-grid{grid-template-columns:repeat(3,1fr);gap:16px 10px}
 }
+
+/* Header: brand name beside the logo */
+.nav-logo-text{font-family:'Cinzel',serif;font-weight:700;font-size:1.1rem;letter-spacing:0.16em;color:var(--gold);margin-left:10px;white-space:nowrap;line-height:1}
+@media(max-width:400px){.nav-logo-text{font-size:0.95rem;letter-spacing:0.12em;margin-left:8px}}
