@@ -28,7 +28,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@400;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://js.paystack.co/v1/inline.js" defer></script>
-<link rel="stylesheet" href="css/main.css?v=20261025d">
+<link rel="stylesheet" href="css/main.css?v=20261025e">
 </head>
 <body>
 
@@ -158,6 +158,31 @@
           <div class="review-card"><div class="review-stars">★★★★★</div><p class="review-text">"I bought this as a gift and my family absolutely loved it. High quality production, and the Adinkra symbols are explained beautifully in the rulebook."</p><div class="review-author">— Abena M., Kumasi</div></div>
           <div class="review-card"><div class="review-stars">★★★★★</div><p class="review-text">"As someone in the diaspora, this game means so much to me. It's a beautiful way to connect my kids to Ghanaian culture while having genuine fun."</p><div class="review-author">— Nana K., London</div></div>
           <div class="review-card"><div class="review-stars">★★★★☆</div><p class="review-text">"The quality is exceptional for a locally made game. The card stock is thick and the box is premium. Will be buying more as gifts."</p><div class="review-author">— Ama S., Takoradi</div></div>
+        </div>
+        <div class="review-form-card" id="leave-review">
+          <h3 class="review-form-title">Played ASA NTI? Share your review</h3>
+          <p class="review-form-intro">We read every review. With your permission, we may feature your first name and city on this page. Got a short clip of a game night? Add the link — we'd love to see it.</p>
+          <form id="reviewForm" onsubmit="event.preventDefault();handleReviewSubmit(this)">
+            <div class="form-group">
+              <span class="form-label" id="rvRatingLabel">Your rating</span>
+              <div class="star-input" role="radiogroup" aria-labelledby="rvRatingLabel">
+                <input type="radio" id="rv5" name="rating" value="5"><label for="rv5" title="5 stars" aria-label="5 stars">★</label>
+                <input type="radio" id="rv4" name="rating" value="4"><label for="rv4" title="4 stars" aria-label="4 stars">★</label>
+                <input type="radio" id="rv3" name="rating" value="3"><label for="rv3" title="3 stars" aria-label="3 stars">★</label>
+                <input type="radio" id="rv2" name="rating" value="2"><label for="rv2" title="2 stars" aria-label="2 stars">★</label>
+                <input type="radio" id="rv1" name="rating" value="1"><label for="rv1" title="1 star" aria-label="1 star">★</label>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label class="form-label" for="rvName">Your name</label><input id="rvName" name="name" class="form-input" maxlength="60" autocomplete="name" placeholder="e.g. Kofi Mensah" required></div>
+              <div class="form-group"><label class="form-label" for="rvCity">City</label><input id="rvCity" name="city" class="form-input" maxlength="60" autocomplete="address-level2" placeholder="e.g. Kumasi" required></div>
+            </div>
+            <div class="form-group"><label class="form-label" for="rvEmail">Email <span class="form-hint">— private, used only to confirm your order</span></label><input id="rvEmail" name="email" type="email" class="form-input" autocomplete="email" placeholder="The email you ordered with" required></div>
+            <div class="form-group"><label class="form-label" for="rvText">Your review</label><textarea id="rvText" name="review" class="form-textarea" minlength="10" maxlength="1500" placeholder="What did you think of the game, the cards and the box? Who did you play with?" required></textarea></div>
+            <div class="form-group"><label class="form-label" for="rvVideo">Gameplay video link <span class="form-hint">— optional</span></label><input id="rvVideo" name="video_link" type="url" class="form-input" placeholder="Instagram, TikTok, YouTube or Google Drive link"></div>
+            <label class="review-consent"><input type="checkbox" name="consent" required> You may publish my review with my first name and city.</label>
+            <button type="submit" class="btn btn-gold review-submit">Send Review</button>
+          </form>
         </div>
       </div>
 
@@ -308,7 +333,7 @@
 <!-- ═══════════ TOAST CONTAINER ═══════════ -->
 <div class="toast-wrap" id="toastWrap"></div>
 
-<script src="js/main.js?v=20261025d"></script>
+<script src="js/main.js?v=20261025e"></script>
 <script>
 function switchImg(thumb, src, alt) {
   var img = document.getElementById('mainProductImg');

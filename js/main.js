@@ -883,6 +883,29 @@ async function handleNewsletterSubmit(el){
   }
 }
 
+// ── Review form (store page) — emailed to the team, published only after approval ──
+async function handleReviewSubmit(form){
+  const data = Object.fromEntries(new FormData(form));
+  if (!data.rating) { showToast('!','Please choose a star rating','toast-red'); return; }
+  const btn = form.querySelector('.review-submit');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+  try {
+    await apiFetch('/api/reviews', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: data.name, city: data.city, email: data.email, rating: Number(data.rating),
+        review: data.review, video_link: data.video_link || '', consent: data.consent ? 'true' : 'false',
+      }),
+    });
+    form.reset();
+    showToast('✓','Thank you! We read every review and may feature yours here soon.','toast-green');
+  } catch (err) {
+    showToast('!', err.status === 400 || err.status === 429 ? err.message : 'Could not send your review — please try again','toast-red');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Send Review'; }
+  }
+}
+
 // ── Contact form ──
 async function handleContactSubmit(){
   const first = document.getElementById('cf_first')?.value?.trim();
