@@ -7,6 +7,47 @@ const IMG_AHENNIE = 'images/suit-ahennie.svg';
 // ══════════════════════════════════════════════════
 const API_BASE = 'https://asanticards-production.up.railway.app';
 const PAYSTACK_PUBLIC_KEY = 'pk_live_ec1ec560fc23b6f40264e23c7782d27fad86171b';
+// Ad pixels — paste the IDs from Meta Events Manager and TikTok Ads Manager. Left empty, nothing loads.
+const META_PIXEL_ID = '2199470347661333';
+const TIKTOK_PIXEL_ID = 'DBF8AFRC77U4SEFNLBV0';
+
+
+// ── Ad pixels (Meta + TikTok) ──
+(function loadAdPixels() {
+  if (META_PIXEL_ID) {
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+    document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', META_PIXEL_ID);
+    fbq('track', 'PageView');
+  }
+  if (TIKTOK_PIXEL_ID) {
+    !function (w, d, t) {
+      w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie","holdConsent","revokeConsent","grantConsent"],ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.instance=function(t){for(var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e},ttq.load=function(e,n){var r="https://analytics.tiktok.com/i18n/pixel/events.js";ttq._i=ttq._i||{},ttq._i[e]=[],ttq._i[e]._u=r,ttq._t=ttq._t||{},ttq._t[e]=+new Date,ttq._o=ttq._o||{},ttq._o[e]=n||{};var o=d.createElement("script");o.type="text/javascript",o.async=!0,o.src=r+"?sdkid="+e+"&lib="+t;var a=d.getElementsByTagName("script")[0];a.parentNode.insertBefore(o,a)};
+      ttq.load(TIKTOK_PIXEL_ID);
+      ttq.page();
+    }(window, document, 'ttq');
+  }
+})();
+
+// Send one shopping event to both pixels. Events: AddToCart, InitiateCheckout, Purchase.
+function trackAd(event, { value, ids = [], orderRef } = {}) {
+  try {
+    if (window.fbq) {
+      fbq('track', event, { value, currency: 'GHS', content_ids: ids, content_type: 'product' },
+        orderRef ? { eventID: orderRef } : undefined);
+    }
+    if (window.ttq) {
+      const tiktokEvent = event === 'Purchase' ? 'CompletePayment' : event;
+      ttq.track(tiktokEvent, { value, currency: 'GHS', contents: ids.map(id => ({ content_id: id, content_type: 'product' })) },
+        orderRef ? { event_id: orderRef } : undefined);
+    }
+  } catch (err) {
+    console.warn('Ad pixel event failed:', err.message);
+  }
+}
 
 
 // ── API helpers ──
@@ -38,7 +79,7 @@ async function apiFetch(path, options = {}) {
 // ══════════════════════════════════════════════════
 const PRODUCTS_DEFAULT = [
   {id:'collectors', name:"ASA NTI — Collector's Edition", price:350, category:'game',  stock:50, active:true,  sort_order:1},
-  {id:'bundle2',    name:'Two-Box Bundle',                price:500, category:'bundle', stock:20, active:true,  sort_order:2},
+  {id:'bundle2',    name:'Two-Box Bundle',                price:650, category:'bundle', stock:20, active:true,  sort_order:2},
   {id:'tote',       name:'ASA NTI Tote Bag',              price:200, category:'merch',  stock:35, active:true,  sort_order:3},
   {id:'poster',     name:'Three Suits Art Poster',        price:200, category:'merch',  stock:30, active:true,  sort_order:4},
   {id:'giftset',    name:'Premium Gift Set',              price:195, category:'bundle', stock:15, active:false, sort_order:5},
@@ -404,6 +445,7 @@ function addToCart(id, name, price, rawQty){
     cart.push({id, name, price, qty: reqQty});
   }
   updateCartUI();
+  trackAd('AddToCart', { value: price * reqQty, ids: [id] });
   showToast('✦', `${name} added to cart`, 'toast-gold');
   // bump badge animation
   const badge = document.getElementById('cartBadge');
@@ -559,6 +601,21 @@ function selectShipping(method, cost) {
   updateCheckoutSummary();
 }
 
+// Standard and Express deliver within Ghana only; every other country ships Diaspora.
+// The server enforces the same rule (lib/shipping.js) when the order is created.
+function applyCountryShipping() {
+  const sel = document.getElementById('co_country');
+  if (!sel) return;
+  const allowed = sel.value === 'GH' ? ['standard', 'express'] : ['diaspora'];
+  document.querySelectorAll('.ship-opt').forEach(el => {
+    el.style.display = allowed.includes(el.id.replace('ship_', '')) ? '' : 'none';
+  });
+  if (!allowed.includes(shippingMethod)) selectShipping(allowed[0], shippingTiers[allowed[0]]);
+}
+document.addEventListener('change', e => {
+  if (e.target.id === 'co_country') applyCountryShipping();
+});
+
 
 // ══════════════════════════════════════════════════
 // DYNAMIC SHIPPING TIERS FROM BACKEND
@@ -603,6 +660,7 @@ async function fetchShippingTiersFromAPI() {
     }).join('');
 
     updateCartUI();
+    applyCountryShipping();
 
   } catch (err) {
     console.warn('Backend shipping endpoint missing or down. Loading safety fallbacks:', err.message);
@@ -620,6 +678,7 @@ async function fetchShippingTiersFromAPI() {
       </div>
     `;
     selectShipping('standard', 50);
+    applyCountryShipping();
   }
 }
 
@@ -648,8 +707,10 @@ function updateCheckoutSummary(){
 function openCheckout(){
   if(cart.length===0){ showToast('!','Your cart is empty','toast-red'); return; }
   closeCart();
+  trackAd('InitiateCheckout', { value: cartSubtotal(), ids: cart.map(i => i.id) });
   document.getElementById('checkoutContent').innerHTML = getCheckoutFormHTML();
   updateCheckoutSummary();
+  applyCountryShipping();
   fetchShippingTiersFromAPI();
   document.getElementById('checkoutOverlay').classList.add('open');
   document.getElementById('checkoutModalTitle').textContent = 'Checkout';
@@ -772,6 +833,7 @@ async function initiatePaystack(){
         customer_phone: phone,
         delivery_address: deliveryAddress,
         shipping_method: shippingMethod,
+        country: countrySel ? countrySel.value : '',
         items: cart.map(i => ({ product_id: i.id, qty: Number(i.qty || i.quantity || 1) })),
       }),
     });
@@ -815,7 +877,7 @@ async function initiatePaystack(){
         showToast('!','Payment cancelled','toast-red');
       },
       callback: function(response){
-        onPaymentSuccess(response, {first, last, email, phone, addr, city, ref});
+        onPaymentSuccess(response, {first, last, email, phone, addr, city, ref, total: Number(order.total_ghs)});
       }
     });
     handler.openIframe();
@@ -833,6 +895,7 @@ function onPaymentSuccess(response, customer){
 
   // Clear cart
   const orderRef = customer.ref;
+  trackAd('Purchase', { value: customer.total, ids: cart.map(i => i.id), orderRef });
   cart = [];
   localStorage.removeItem('asanti_cart');
   updateCartUI();
