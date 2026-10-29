@@ -6,7 +6,9 @@ const IMG_AHENNIE = 'images/suit-ahennie.svg';
 // CONFIG
 // ══════════════════════════════════════════════════
 const API_BASE = 'https://asanticards-production.up.railway.app';
-const PAYSTACK_PUBLIC_KEY = 'pk_live_ec1ec560fc23b6f40264e23c7782d27fad86171b';
+// Payments are started on the server, so the website needs no Paystack key.
+// Cloudflare Turnstile site key for the checkout bot check. Left empty, no check is shown.
+const TURNSTILE_SITE_KEY = '';
 // Ad pixels — paste the IDs from Meta Events Manager and TikTok Ads Manager. Left empty, nothing loads.
 const META_PIXEL_ID = '2199470347661333';
 const TIKTOK_PIXEL_ID = 'DBF8AFRC77U4SEFNLBV0';
@@ -743,6 +745,37 @@ function updateCheckoutSummary(){
   document.getElementById('coTotal').textContent = `GH₵ ${total.toLocaleString()}`;
 }
 
+// ── Checkout bot check (Cloudflare Turnstile) ──
+let turnstileWidgetId = null;
+function loadTurnstile(){
+  if (window.turnstile) return Promise.resolve();
+  if (!loadTurnstile.promise) {
+    loadTurnstile.promise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      s.async = true;
+      s.onload = resolve;
+      s.onerror = () => { loadTurnstile.promise = null; reject(new Error('Turnstile failed to load')); };
+      document.head.appendChild(s);
+    });
+  }
+  return loadTurnstile.promise;
+}
+function mountTurnstile(){
+  const box = document.getElementById('turnstileBox');
+  if (!TURNSTILE_SITE_KEY || !box) return;
+  loadTurnstile().then(() => {
+    turnstileWidgetId = window.turnstile.render(box, { sitekey: TURNSTILE_SITE_KEY, theme: 'dark' });
+  }).catch(err => console.error(err.message));
+}
+function turnstileToken(){
+  if (!TURNSTILE_SITE_KEY) return '';
+  return (window.turnstile && turnstileWidgetId !== null) ? window.turnstile.getResponse(turnstileWidgetId) || '' : '';
+}
+function resetTurnstile(){
+  if (window.turnstile && turnstileWidgetId !== null) window.turnstile.reset(turnstileWidgetId);
+}
+
 function openCheckout(){
   if(cart.length===0){ showToast('!','Your cart is empty','toast-red'); return; }
   closeCart();
@@ -751,6 +784,7 @@ function openCheckout(){
   updateCheckoutSummary();
   applyCountryShipping();
   fetchShippingTiersFromAPI();
+  mountTurnstile();
   document.getElementById('checkoutOverlay').classList.add('open');
   document.getElementById('checkoutModalTitle').textContent = 'Checkout';
   document.body.style.overflow='hidden';
@@ -797,6 +831,7 @@ function getCheckoutFormHTML(){
       </div>
       <div class="co-section-title">Order Summary</div>
       <div class="co-order-summary"><div id="coOrderLines"></div><div class="co-order-line"><span>Shipping</span><span id="coShippingLine">GH₵ 50</span></div><div class="co-order-line total"><span>Total</span><span id="coTotal">GH₵ 0</span></div></div>
+      <div id="turnstileBox" style="grid-column:1/-1;display:flex;justify-content:center"></div>
       <button class="paystack-btn" id="paystackBtn" onclick="initiatePaystack()"><span>Pay Securely</span><span class="paystack-logo">via PAYSTACK</span></button>
       <p style="grid-column:1/-1;text-align:center;font-size:0.75rem;color:rgba(233,208,162,0.73);margin-top:-6px">256-bit SSL encryption · Your data is always protected<br>By paying you agree to our <a href="terms.html" target="_blank">Terms</a> and <a href="returns.html" target="_blank">Returns Policy</a>.</p>
     </div>
@@ -849,6 +884,9 @@ async function initiatePaystack(){
     return;
   }
 
+  const token = turnstileToken();
+  if(TURNSTILE_SITE_KEY && !token){ showToast('!','Please complete the security check','toast-red'); return; }
+
   const btn = document.getElementById('paystackBtn');
   const resetBtn = () => {
     btn.disabled = false;
@@ -874,11 +912,13 @@ async function initiatePaystack(){
         shipping_method: shippingMethod,
         country: countrySel ? countrySel.value : '',
         items: cart.map(i => ({ product_id: i.id, qty: Number(i.qty || i.quantity || 1) })),
+        turnstile_token: token,
       }),
     });
   } catch (err) {
+    resetTurnstile(); // each token works once
     console.error('Order creation failed:', err.message);
-    showToast('!', err.status === 429 || err.status === 400 ? err.message : 'Could not start checkout — please try again', 'toast-red');
+    showToast('!', [400, 429, 502].includes(err.status) ? err.message : 'Could not start checkout — please try again', 'toast-red');
     fetchProductsFromAPI(); // refresh stock/prices in case they changed
     resetBtn();
     return;
@@ -890,36 +930,24 @@ async function initiatePaystack(){
   const totalEl = document.getElementById('coTotal');
   if (totalEl) totalEl.textContent = `GH₵ ${Number(order.total_ghs).toLocaleString()}`;
 
-  // Step 2: Open Paystack for the server-calculated amount
+  // Step 2: Open the payment the server started. The amount was set on the server
+  // with the secret key, so it can't be changed here.
+  resetTurnstile();
   try {
-    const handler = PaystackPop.setup({
-      key: PAYSTACK_PUBLIC_KEY,
-      email: email,
-      amount: order.total_pesewas,
-      currency: 'GHS',
-      ref: ref,
-      firstname: first,
-      lastname: last,
-      phone: phone,
-      metadata: {
-        custom_fields: [
-          // order_ref is how the server's webhook finds this order — required
-          {display_name:'Order Ref', variable_name:'order_ref', value: ref},
-          {display_name:'Customer Name', variable_name:'customer_name', value:`${first} ${last}`},
-          {display_name:'Delivery Address', variable_name:'address', value: deliveryAddress},
-          {display_name:'Shipping Method', variable_name:'shipping', value:shippingMethod},
-          {display_name:'Cart Items', variable_name:'cart', value: cart.map(i=>`${i.name} x${i.qty}`).join(', ')},
-        ]
+    new PaystackPop().resumeTransaction(order.access_code, {
+      onSuccess: function(transaction){
+        onPaymentSuccess(transaction, {first, last, email, phone, addr, city, ref, total: Number(order.total_ghs)});
       },
-      onClose: function(){
+      onCancel: function(){
         resetBtn();
         showToast('!','Payment cancelled','toast-red');
       },
-      callback: function(response){
-        onPaymentSuccess(response, {first, last, email, phone, addr, city, ref, total: Number(order.total_ghs)});
-      }
+      onError: function(err){
+        console.error('Paystack error:', err);
+        resetBtn();
+        showToast('!','Payment error - please try again','toast-red');
+      },
     });
-    handler.openIframe();
   } catch(err) {
     console.error('Paystack error:', err);
     resetBtn();
